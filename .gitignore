@@ -37,8 +37,12 @@ data/
 
 # Frontend build output
 frontend/node_modules/
-frontend/dist/
+frontend/dist/*
+!frontend/dist/.gitkeep
 frontend/build/
+
+# Build output
+dist/
 
 # Temporary files
 tmp/

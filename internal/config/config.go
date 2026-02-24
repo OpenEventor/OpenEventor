@@ -15,7 +15,7 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:            envOrDefault("PORT", "3000"),
+		Port:            envOrDefault("PORT", "5050"),
 		DataDir:         envOrDefault("DATA_DIR", "./data"),
 		JWTSecret:       envOrDefault("JWT_SECRET", "change-me-in-production"),
 		AccessTokenTTL:  15 * time.Minute,
