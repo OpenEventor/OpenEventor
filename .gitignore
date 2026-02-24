@@ -1,0 +1,46 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+
+# Go build/test
+*.test
+*.out
+*.prof
+
+# Dependency directory
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (SQLite databases, runtime data)
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Environment / secrets
+.env
+.env.*
+
+# Frontend build output
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Temporary files
+tmp/
+*.tmp
+*.log
