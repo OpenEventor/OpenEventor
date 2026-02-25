@@ -3,13 +3,14 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/openeventor/openeventor/internal/auth"
+	"github.com/openeventor/openeventor/internal/config"
 	"github.com/openeventor/openeventor/internal/database"
 )
 
 // Handler holds shared dependencies for all route handlers.
 type Handler struct {
 	DB     *database.Manager
-	Secret string
+	Config *config.Config
 }
 
 // SetupRoutes registers all API routes on the Fiber app.
@@ -25,7 +26,7 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	authGroup.Post("/logout", h.Logout)
 
 	// Protected routes
-	api := app.Group("/api", auth.RequireJWT(h.Secret))
+	api := app.Group("/api", auth.RequireJWT(h.Config.JWTSecret))
 
 	// Events
 	api.Get("/events", h.ListEvents)
@@ -37,15 +38,15 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	event.Put("/", h.UpdateEvent)
 	event.Delete("/", h.DeleteEvent)
 
-	// Participants
-	event.Get("/participants", h.ListParticipants)
-	event.Post("/participants", h.CreateParticipant)
-	event.Put("/participants/:participantId", h.UpdateParticipant)
-	event.Delete("/participants/:participantId", h.DeleteParticipant)
+	// Competitors
+	event.Get("/competitors", h.ListCompetitors)
+	event.Post("/competitors", h.CreateCompetitor)
+	event.Put("/competitors/:competitorId", h.UpdateCompetitor)
+	event.Delete("/competitors/:competitorId", h.DeleteCompetitor)
 
-	// Punches (event-token auth, separate from user JWT)
-	punches := app.Group("/api/events/:eventId/punches", auth.RequireEventToken())
-	punches.Post("/", h.CreatePunches)
+	// Passings (event-token auth, separate from user JWT)
+	passings := app.Group("/api/events/:eventId/passings", auth.RequireEventToken())
+	passings.Post("/", h.CreatePassings)
 
 	// Results (public with event-token)
 	results := app.Group("/api/events/:eventId/results", auth.RequireEventToken())

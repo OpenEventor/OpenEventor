@@ -2,7 +2,7 @@ package validation
 
 import "github.com/openeventor/openeventor/internal/models"
 
-// ValidationResult holds the outcome of course validation for a participant.
+// ValidationResult holds the outcome of course validation for a competitor.
 type ValidationResult struct {
 	Status     string  // OK | DSQ | DNF
 	Splits     []Split // ordered split times
@@ -17,8 +17,8 @@ type Split struct {
 	Time       int64 // milliseconds from start
 }
 
-// CourseValidator validates punches against a course definition.
+// CourseValidator validates passings against a course definition.
 type CourseValidator interface {
-	Validate(course models.Course, punches []models.Punch) ValidationResult
+	Validate(course models.Course, passings []models.Passing) ValidationResult
 	Name() string
 }

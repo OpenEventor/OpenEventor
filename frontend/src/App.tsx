@@ -1,35 +1,55 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { ThemeModeProvider } from './contexts/ThemeContext.tsx';
+import { AuthProvider } from './contexts/AuthContext.tsx';
+import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute.tsx';
+import { EventLayout } from './components/EventLayout/EventLayout.tsx';
+import { LoginPage } from './pages/LoginPage/LoginPage.tsx';
+import { EventsListPage } from './pages/EventsListPage/EventsListPage.tsx';
+import { CompetitorsPage } from './pages/event/CompetitorsPage/CompetitorsPage.tsx';
+import { SplitsPage } from './pages/event/SplitsPage/SplitsPage.tsx';
+import { GroupsPage } from './pages/event/GroupsPage/GroupsPage.tsx';
+import { TeamsPage } from './pages/event/TeamsPage/TeamsPage.tsx';
+import { CoursesPage } from './pages/event/CoursesPage/CoursesPage.tsx';
+import { PassingsPage } from './pages/event/PassingsPage/PassingsPage.tsx';
+import { SettingsPage } from './pages/event/SettingsPage/SettingsPage.tsx';
+
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/',
+    element: <ProtectedRoute />,
+    children: [
+      { index: true, element: <Navigate to="/events" replace /> },
+      { path: 'events', element: <EventsListPage /> },
+      {
+        path: 'events/:eventId',
+        element: <EventLayout />,
+        children: [
+          { index: true, element: <Navigate to="competitors" replace /> },
+          { path: 'competitors', element: <CompetitorsPage /> },
+          { path: 'splits', element: <SplitsPage /> },
+          { path: 'groups', element: <GroupsPage /> },
+          { path: 'teams', element: <TeamsPage /> },
+          { path: 'courses', element: <CoursesPage /> },
+          { path: 'passings', element: <PassingsPage /> },
+          { path: 'settings', element: <SettingsPage /> },
+        ],
+      },
+    ],
+  },
+]);
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <ThemeModeProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ThemeModeProvider>
+  );
 }
 
-export default App
+export default App;

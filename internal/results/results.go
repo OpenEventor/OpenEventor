@@ -2,9 +2,9 @@ package results
 
 import "github.com/openeventor/openeventor/internal/models"
 
-// ParticipantResult holds computed result for a single participant.
-type ParticipantResult struct {
-	Participant models.Participant
+// CompetitorResult holds computed result for a single competitor.
+type CompetitorResult struct {
+	Competitor models.Competitor
 	CourseName  string
 	GroupName   string
 	Status      string // OK | DSQ | DNF | DNS
@@ -22,5 +22,5 @@ type SplitTime struct {
 // ResultsData holds results for rendering or API response.
 type ResultsData struct {
 	EventName string
-	Results   []ParticipantResult
+	Results   []CompetitorResult
 }

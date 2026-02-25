@@ -3,39 +3,77 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS participants (
+CREATE TABLE IF NOT EXISTS competitors (
     id TEXT PRIMARY KEY,
     bib TEXT,
-    card_number TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    birth_date TEXT,
-    gender TEXT,
+    card TEXT,
     team_id TEXT,
     group_id TEXT,
     course_id TEXT,
+
+    first_name TEXT,
+    last_name TEXT,
+    middle_name TEXT,
+    first_name_int TEXT,
+    last_name_int TEXT,
+    gender TEXT,
+    birth_date TEXT,
+    birth_year INTEGER,
+
+    rank TEXT,
+    rating REAL,
+
+    country TEXT,
+    region TEXT,
+    city TEXT,
+
+    phone TEXT,
+    email TEXT,
+
+    start_time TEXT,
+    time_adjustment INTEGER DEFAULT 0,
+
     dsq INTEGER DEFAULT 0,
     dsq_description TEXT,
     dns INTEGER DEFAULT 0,
     dnf INTEGER DEFAULT 0,
+    out_of_rank INTEGER DEFAULT 0,
+
+    entry_number TEXT,
+    price REAL,
+    is_paid INTEGER DEFAULT 0,
+    is_checkin INTEGER DEFAULT 0,
+
     notes TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    country TEXT,
+    region TEXT,
+    city TEXT,
     description TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS age_groups (
+CREATE TABLE IF NOT EXISTS groups (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     course_id TEXT,
+    parent_id TEXT,
+    gender TEXT,
+    year_from INTEGER,
+    year_to INTEGER,
+    start_time TEXT,
+    price REAL,
     description TEXT,
     sort_order INTEGER DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS courses (
@@ -43,18 +81,26 @@ CREATE TABLE IF NOT EXISTS courses (
     name TEXT NOT NULL,
     checkpoints TEXT NOT NULL,
     validation_mode TEXT DEFAULT 'strict',
+    geo_track TEXT,
+    length REAL,
+    altitude REAL,
+    climb REAL,
+    start_time TEXT,
+    price REAL,
     description TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS punches (
+CREATE TABLE IF NOT EXISTS passings (
     id TEXT PRIMARY KEY,
-    card_number TEXT NOT NULL,
+    card TEXT NOT NULL,
     checkpoint TEXT NOT NULL,
     timestamp_utc TEXT NOT NULL,
     enabled INTEGER DEFAULT 1,
     source TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS files (
@@ -66,9 +112,27 @@ CREATE TABLE IF NOT EXISTS files (
     created_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_punches_card ON punches(card_number);
-CREATE INDEX IF NOT EXISTS idx_punches_checkpoint ON punches(checkpoint);
-CREATE INDEX IF NOT EXISTS idx_participants_card ON participants(card_number);
-CREATE INDEX IF NOT EXISTS idx_participants_group ON participants(group_id);
-CREATE INDEX IF NOT EXISTS idx_participants_course ON participants(course_id);
-CREATE INDEX IF NOT EXISTS idx_age_groups_course ON age_groups(course_id);
+CREATE TABLE IF NOT EXISTS checkins (
+    id TEXT PRIMARY KEY,
+    competitor_id TEXT NOT NULL,
+    user_id TEXT,
+    status INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id TEXT PRIMARY KEY,
+    competitor_id TEXT NOT NULL,
+    user_id TEXT,
+    amount REAL NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkins_competitor ON checkins(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_payments_competitor ON payments(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_passings_card ON passings(card);
+CREATE INDEX IF NOT EXISTS idx_passings_checkpoint ON passings(checkpoint);
+CREATE INDEX IF NOT EXISTS idx_competitors_card ON competitors(card);
+CREATE INDEX IF NOT EXISTS idx_competitors_group ON competitors(group_id);
+CREATE INDEX IF NOT EXISTS idx_competitors_course ON competitors(course_id);
+CREATE INDEX IF NOT EXISTS idx_groups_course ON groups(course_id);

@@ -2,7 +2,7 @@
 
 ## System Overview
 
-OpenEventor is a timing and results platform for sports events. It serves as a central data hub: receiving timing data (punches) from external devices via API, computing results on the fly, and distributing them to consumers (scoreboards, video overlays, online results).
+OpenEventor is a timing and results platform for sports events. It serves as a central data hub: receiving timing data (passings) from external devices via API, computing results on the fly, and distributing them to consumers (scoreboards, video overlays, online results).
 
 The system can be deployed locally (laptop in a timing tent, intranet) or in the cloud (shared service for multiple organizers).
 
@@ -11,7 +11,7 @@ The system can be deployed locally (laptop in a timing tent, intranet) or in the
 ### Local (Timing Tent)
 - Single Go binary + SQLite files on a laptop
 - 1-5 users on local network
-- WiFi may be shared with event participants (security matters)
+- WiFi may be shared with event competitors (security matters)
 - No external dependencies required
 
 ### Cloud (Shared Service)
@@ -78,42 +78,79 @@ CREATE TABLE settings (
     value TEXT
 );
 
--- Participants
-CREATE TABLE participants (
+-- Competitors
+CREATE TABLE competitors (
     id TEXT PRIMARY KEY,
     bib TEXT,                      -- bib number (may be empty)
-    card_number TEXT,              -- timing device ID (links to punches)
-    first_name TEXT,
-    last_name TEXT,
-    birth_date TEXT,
-    gender TEXT,                   -- M | F | empty
+    card TEXT,                     -- timing device ID (links to passings)
     team_id TEXT,
     group_id TEXT,
     course_id TEXT,                -- direct course assignment (overrides group)
+
+    first_name TEXT,
+    last_name TEXT,
+    first_name_int TEXT,           -- international name (e.g. for FIS)
+    last_name_int TEXT,
+    gender TEXT,                   -- M | F
+    birth_date TEXT,               -- full date when known
+    birth_year INTEGER,            -- year only when full date unknown
+
+    rank TEXT,                     -- free text: KMS, MS, Elite, Cat 1, etc.
+    rating REAL,                   -- for seeded start calculation
+
+    country TEXT,
+    region TEXT,
+    city TEXT,
+
+    phone TEXT,
+    email TEXT,
+
+    start_time TEXT,               -- assigned start time (ISO 8601)
+    time_adjustment INTEGER DEFAULT 0, -- ±seconds (+120 = penalty, -180 = handicap)
+
     dsq INTEGER DEFAULT 0,        -- manual disqualification flag
     dsq_description TEXT,
     dns INTEGER DEFAULT 0,        -- did not start flag
     dnf INTEGER DEFAULT 0,        -- did not finish flag
+    out_of_rank INTEGER DEFAULT 0, -- non-competitive
+
+    entry_number TEXT,             -- registration number
+    price REAL,                    -- entry fee
+    is_paid INTEGER DEFAULT 0,
+    is_checkin INTEGER DEFAULT 0,
+
     notes TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 -- Teams
 CREATE TABLE teams (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    country TEXT,
+    region TEXT,
+    city TEXT,
     description TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
--- Age/category groups
-CREATE TABLE age_groups (
+-- Groups (age/category)
+CREATE TABLE groups (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,            -- e.g., "M21", "W15", "Open A"
     course_id TEXT,                -- optional link to course
+    parent_id TEXT,                -- parent group for combined rankings
+    gender TEXT,                   -- M | F (filter for auto-assignment)
+    year_from INTEGER,             -- birth year range start
+    year_to INTEGER,               -- birth year range end
+    start_time TEXT,               -- group start time (mass start)
+    price REAL,                    -- entry fee for this group
     description TEXT,
     sort_order INTEGER DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
 -- Course definitions (distance/route configurations)
@@ -122,18 +159,44 @@ CREATE TABLE courses (
     name TEXT NOT NULL,            -- e.g., "50km", "Sprint A"
     checkpoints TEXT NOT NULL,     -- JSON array: ["START","LAP","LAP","FINISH"]
     validation_mode TEXT DEFAULT 'strict', -- strict | relaxed
+    geo_track TEXT,                -- GeoJSON track
+    length REAL,                   -- distance in meters
+    altitude REAL,                 -- max altitude in meters
+    climb REAL,                    -- elevation gain in meters
+    start_time TEXT,               -- course start time (mass start)
+    price REAL,                    -- entry fee
     description TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 
--- Timing marks (punches/reads from timing systems)
-CREATE TABLE punches (
+-- Timing data from external devices
+CREATE TABLE passings (
     id TEXT PRIMARY KEY,
-    card_number TEXT NOT NULL,     -- links to participant.card_number
+    card TEXT NOT NULL,            -- links to competitor.card
     checkpoint TEXT NOT NULL,      -- control point name (plain text)
     timestamp_utc TEXT NOT NULL,   -- ISO 8601 UTC
     enabled INTEGER DEFAULT 1,    -- 0 = disabled/ignored
     source TEXT,                   -- origin identifier (e.g., "reader-1", "manual")
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- Check-in audit log
+CREATE TABLE checkins (
+    id TEXT PRIMARY KEY,
+    competitor_id TEXT NOT NULL,
+    user_id TEXT,                  -- who performed the operation (from system.db)
+    status INTEGER NOT NULL,      -- 1 = checked in, 0 = unchecked
+    created_at TEXT NOT NULL
+);
+
+-- Payment audit log
+CREATE TABLE payments (
+    id TEXT PRIMARY KEY,
+    competitor_id TEXT NOT NULL,
+    user_id TEXT,                  -- who processed (from system.db)
+    amount REAL NOT NULL,          -- positive = payment, negative = refund
     created_at TEXT NOT NULL
 );
 
@@ -151,65 +214,67 @@ CREATE TABLE files (
 #### Indexes
 
 ```sql
-CREATE INDEX idx_punches_card ON punches(card_number);
-CREATE INDEX idx_punches_checkpoint ON punches(checkpoint);
-CREATE INDEX idx_participants_card ON participants(card_number);
-CREATE INDEX idx_participants_group ON participants(group_id);
-CREATE INDEX idx_participants_course ON participants(course_id);
-CREATE INDEX idx_age_groups_course ON age_groups(course_id);
+CREATE INDEX idx_checkins_competitor ON checkins(competitor_id);
+CREATE INDEX idx_payments_competitor ON payments(competitor_id);
+CREATE INDEX idx_passings_card ON passings(card);
+CREATE INDEX idx_passings_checkpoint ON passings(checkpoint);
+CREATE INDEX idx_competitors_card ON competitors(card);
+CREATE INDEX idx_competitors_group ON competitors(group_id);
+CREATE INDEX idx_competitors_course ON competitors(course_id);
+CREATE INDEX idx_groups_course ON groups(course_id);
 ```
 
-## Participant-Course Resolution
+## Competitor-Course Resolution
 
-A participant's course is resolved with this priority:
+A competitor's course is resolved with this priority:
 
-1. `participant.course_id` — direct assignment (highest priority)
-2. `age_groups.course_id` where `age_groups.id = participant.group_id` — inherited from group
-3. No course — participant cannot be included in results
+1. `competitor.course_id` — direct assignment (highest priority)
+2. `groups.course_id` where `groups.id = competitor.group_id` — inherited from group
+3. No course — competitor cannot be included in results
 
 This supports different sport conventions:
-- **Orienteering (large events):** participant → group (M21) → course. Participant doesn't choose.
-- **Orienteering (small events):** participant → course (A/B/C) directly. Groups irrelevant.
-- **Ski racing:** participant → course (50km/10km). Results generated both by course and by group.
+- **Orienteering (large events):** competitor → group (M21) → course. Competitor doesn't choose.
+- **Orienteering (small events):** competitor → course (A/B/C) directly. Groups irrelevant.
+- **Ski racing:** competitor → course (50km/10km). Results generated both by course and by group.
 
-## Punch Flow
+## Passing Flow
 
 ```
-External device → POST /api/events/:id/punches → punches table
+External device → POST /api/events/:id/passings → passings table
                   (batch, event-token auth)
 
-Punches arrive as:
+Passings arrive as:
 {
-  "card_number": "12345",
+  "card": "12345",
   "checkpoint": "LAP",
   "timestamp": "2025-02-15T10:23:45Z"
 }
 ```
 
 Key behaviors:
-- Punches are accepted regardless of whether the participant exists yet
-- Punches are accepted regardless of whether the checkpoint is defined in any course
-- card_number matching is plain text comparison, no FK constraints
-- Batch writes (array of punches) for offline-first readers
+- Passings are accepted regardless of whether the competitor exists yet
+- Passings are accepted regardless of whether the checkpoint is defined in any course
+- `card` matching is plain text comparison, no FK constraints
+- Batch writes (array of passings) for offline-first readers
 - Event-token authentication (separate from user JWT) so timing devices don't need user credentials
 
 ## Result Computation
 
 Results are NEVER stored. Always computed from:
-- Participant's resolved course (see resolution above)
-- All enabled punches for participant's card_number
+- Competitor's resolved course (see resolution above)
+- All enabled passings for competitor's `card`
 - Course validation algorithm
 
 ### Computation steps:
 
-1. Resolve participant's course
-2. Fetch all enabled punches for participant's card_number, ordered by timestamp
-3. Match punches against course checkpoint sequence
+1. Resolve competitor's course
+2. Fetch all enabled passings for competitor's `card`, ordered by timestamp
+3. Match passings against course checkpoint sequence
 4. Apply validation (strict or relaxed)
 5. Calculate split times and total time
 6. Determine status (OK / DSQ / DNF)
 7. Combine with manual status flags (stored dsq/dns/dnf override computed status)
-8. Rank participants within course and/or group
+8. Rank competitors within course and/or group
 
 ### Validation modes:
 
@@ -240,8 +305,8 @@ The validation algorithm is a separate, extensible module. Different sports need
 - **Event token** — for timing devices and data consumers. Scoped to single event. Stored in event settings. No user identity needed.
 
 ### Roles:
-- **admin** — full access to event (manage participants, courses, access, settings)
-- **operator** — can input/edit data (participants, punches) but not manage access
+- **admin** — full access to event (manage competitors, courses, access, settings)
+- **operator** — can input/edit data (competitors, passings) but not manage access
 - **viewer** — read-only access (results, live stream)
 
 ## Real-time Data Distribution
@@ -251,7 +316,7 @@ The validation algorithm is a separate, extensible module. Different sports need
 ```
 GET /api/events/:id/stream?token=<event-token>
 
-data: {"type":"punch","card_number":"12345","checkpoint":"FINISH","timestamp":"..."}
+data: {"type":"passing","card":"12345","checkpoint":"FINISH","timestamp":"..."}
 data: {"type":"result","bib":"42","name":"Ivanov","place":1,"time":"1:02:33"}
 ```
 
@@ -275,8 +340,8 @@ This ensures event DB remains fully portable — one file contains everything.
 ## Import / Export
 
 ### Import:
-- **Participants:** xlsx upload → parsed with excelize → inserted into participants table
-- Endpoint: `POST /api/events/:id/participants/import` (multipart form)
+- **Competitors:** xlsx upload → parsed with excelize → inserted into competitors table
+- Endpoint: `POST /api/events/:id/competitors/import` (multipart form)
 - CSV as fallback format
 
 ### Export:
@@ -324,7 +389,7 @@ No plugin system. Extensibility via Go interfaces:
 ```go
 // Course validation
 type CourseValidator interface {
-    Validate(course Course, punches []Punch) ValidationResult
+    Validate(course Course, passings []Passing) ValidationResult
     Name() string
 }
 
@@ -336,7 +401,7 @@ type ReportRenderer interface {
 
 // Data import
 type DataImporter interface {
-    Import(reader io.Reader) ([]Participant, error)
+    Import(reader io.Reader) ([]Competitor, error)
     SupportedFormats() []string
 }
 ```
@@ -362,4 +427,4 @@ Write serialization strategy:
 - Reads are concurrent (multiple goroutines)
 - This prevents "database is locked" errors under load
 
-For cloud deployment with multiple punch sources writing to the same event DB simultaneously, this serialization is critical.
+For cloud deployment with multiple timing sources writing to the same event DB simultaneously, this serialization is critical.
