@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS competitors (
     id TEXT PRIMARY KEY,
     bib TEXT,
-    card TEXT,
+    card1 TEXT,
+    card2 TEXT,
     team_id TEXT,
     group_id TEXT,
     course_id TEXT,
@@ -96,7 +97,7 @@ CREATE TABLE IF NOT EXISTS passings (
     id TEXT PRIMARY KEY,
     card TEXT NOT NULL,
     checkpoint TEXT NOT NULL,
-    timestamp_utc TEXT NOT NULL,
+    timestamp REAL NOT NULL DEFAULT 0,
     enabled INTEGER DEFAULT 1,
     source TEXT,
     created_at TEXT NOT NULL,
@@ -132,7 +133,8 @@ CREATE INDEX IF NOT EXISTS idx_checkins_competitor ON checkins(competitor_id);
 CREATE INDEX IF NOT EXISTS idx_payments_competitor ON payments(competitor_id);
 CREATE INDEX IF NOT EXISTS idx_passings_card ON passings(card);
 CREATE INDEX IF NOT EXISTS idx_passings_checkpoint ON passings(checkpoint);
-CREATE INDEX IF NOT EXISTS idx_competitors_card ON competitors(card);
+CREATE INDEX IF NOT EXISTS idx_competitors_card1 ON competitors(card1);
+CREATE INDEX IF NOT EXISTS idx_competitors_card2 ON competitors(card2);
 CREATE INDEX IF NOT EXISTS idx_competitors_group ON competitors(group_id);
 CREATE INDEX IF NOT EXISTS idx_competitors_course ON competitors(course_id);
 CREATE INDEX IF NOT EXISTS idx_groups_course ON groups(course_id);

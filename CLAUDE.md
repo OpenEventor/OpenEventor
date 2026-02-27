@@ -39,11 +39,11 @@ Results are ALWAYS computed on the fly from passings + courses. Never stored.
 
 ## Key Entities (per event DB)
 
-- `competitors` — card (text), bib, name, group_id, course_id, rank, gender, birth_date/birth_year, country/region/city, phone/email, start_time, time_adjustment, dsq/dns/dnf/out_of_rank flags, entry_number/price/is_paid/is_checkin
+- `competitors` — card1/card2 (text, two chip slots), bib, name, group_id, course_id, rank, gender, birth_date/birth_year, country/region/city, phone/email, start_time, time_adjustment, dsq/dns/dnf/out_of_rank flags, entry_number/price/is_paid/is_checkin
 - `teams` — name, country/region/city
 - `groups` — course_id, parent_id (hierarchical), gender, year_from/year_to, start_time, price
 - `courses` — ordered checkpoint list, validation algorithm, geo_track (GeoJSON), length/altitude/climb, start_time, price
-- `passings` — card (text), checkpoint (text), timestamp_utc, enabled
+- `passings` — card (text), checkpoint (text), timestamp (REAL, unix seconds with 2 decimal places), enabled
 - `checkins` — audit log: competitor_id, user_id, status (1/0), created_at
 - `payments` — audit log: competitor_id, user_id, amount (±), created_at
 - `files` — name, mime_type, purpose, data (BLOB)

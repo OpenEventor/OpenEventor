@@ -16,6 +16,7 @@ type Event struct {
 	DisplayName string `json:"displayName" db:"display_name"`
 	Date        string `json:"date" db:"date"`
 	Status      string `json:"status" db:"status"`
+	Token       string `json:"token,omitempty" db:"token"`
 	CreatedAt   string `json:"createdAt" db:"created_at"`
 }
 
@@ -39,7 +40,8 @@ type Session struct {
 type Competitor struct {
 	ID       string `json:"id" db:"id"`
 	Bib      string `json:"bib" db:"bib"`
-	Card     string `json:"card" db:"card"`
+	Card1    string `json:"card1" db:"card1"`
+	Card2    string `json:"card2" db:"card2"`
 	TeamID   string `json:"teamId" db:"team_id"`
 	GroupID  string `json:"groupId" db:"group_id"`
 	CourseID string `json:"courseId" db:"course_id"`
@@ -136,14 +138,14 @@ type Course struct {
 
 // Passing is a timing mark from an external device.
 type Passing struct {
-	ID           string `json:"id" db:"id"`
-	Card         string `json:"card" db:"card"`
-	Checkpoint   string `json:"checkpoint" db:"checkpoint"`
-	TimestampUTC string `json:"timestamp" db:"timestamp_utc"`
-	Enabled      int    `json:"enabled" db:"enabled"`
-	Source       string `json:"source" db:"source"`
-	CreatedAt    string `json:"createdAt" db:"created_at"`
-	UpdatedAt    string `json:"updatedAt" db:"updated_at"`
+	ID         string  `json:"id" db:"id"`
+	Card       string  `json:"card" db:"card"`
+	Checkpoint string  `json:"checkpoint" db:"checkpoint"`
+	Timestamp  float64 `json:"timestamp" db:"timestamp"`
+	Enabled    int     `json:"enabled" db:"enabled"`
+	Source     string  `json:"source" db:"source"`
+	CreatedAt  string  `json:"createdAt" db:"created_at"`
+	UpdatedAt  string  `json:"updatedAt" db:"updated_at"`
 }
 
 // Checkin records a check-in status change for a competitor.

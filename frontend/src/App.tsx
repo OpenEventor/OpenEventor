@@ -6,12 +6,14 @@ import { EventLayout } from './components/EventLayout/EventLayout.tsx';
 import { LoginPage } from './pages/LoginPage/LoginPage.tsx';
 import { EventsListPage } from './pages/EventsListPage/EventsListPage.tsx';
 import { CompetitorsPage } from './pages/event/CompetitorsPage/CompetitorsPage.tsx';
-import { SplitsPage } from './pages/event/SplitsPage/SplitsPage.tsx';
+import { MonitorPage } from './pages/event/MonitorPage/MonitorPage.tsx';
+import { ProtocolsPage } from './pages/event/ProtocolsPage/ProtocolsPage.tsx';
+import { DistancesPage } from './pages/event/DistancesPage/DistancesPage.tsx';
 import { GroupsPage } from './pages/event/GroupsPage/GroupsPage.tsx';
 import { TeamsPage } from './pages/event/TeamsPage/TeamsPage.tsx';
-import { CoursesPage } from './pages/event/CoursesPage/CoursesPage.tsx';
 import { PassingsPage } from './pages/event/PassingsPage/PassingsPage.tsx';
 import { SettingsPage } from './pages/event/SettingsPage/SettingsPage.tsx';
+import { ModulesPage } from './pages/event/ModulesPage/ModulesPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -30,11 +32,13 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="competitors" replace /> },
           { path: 'competitors', element: <CompetitorsPage /> },
-          { path: 'splits', element: <SplitsPage /> },
+          { path: 'monitor', element: <MonitorPage /> },
+          { path: 'protocols', element: <ProtocolsPage /> },
+          { path: 'distances', element: <DistancesPage /> },
           { path: 'groups', element: <GroupsPage /> },
-          { path: 'teams', element: <TeamsPage /> },
-          { path: 'courses', element: <CoursesPage /> },
           { path: 'passings', element: <PassingsPage /> },
+          { path: 'teams', element: <TeamsPage /> },
+          { path: 'modules', element: <ModulesPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

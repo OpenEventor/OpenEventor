@@ -8,7 +8,7 @@ export function EventLayout() {
 
   return (
     <>
-      <Box sx={{ pb: isMobile ? 7 : 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', pb: isMobile ? 7 : 0 }}>
         <Outlet />
       </Box>
       {isMobile && <BottomNav />}

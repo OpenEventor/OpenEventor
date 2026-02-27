@@ -4,13 +4,7 @@ import {
   BottomNavigationAction,
   Paper,
 } from '@mui/material';
-import {
-  People as PeopleIcon,
-  Leaderboard as LeaderboardIcon,
-  GroupWork as GroupWorkIcon,
-  Diversity3 as Diversity3Icon,
-  MoreHoriz as MoreHorizIcon,
-} from '@mui/icons-material';
+import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material';
 import { EVENT_TABS } from '../AppBar/AppBar.tsx';
 
 export function BottomNav() {
@@ -21,13 +15,6 @@ export function BottomNav() {
   const activeIndex = EVENT_TABS.findIndex((tab) =>
     location.pathname.includes(`/${tab.path}`),
   );
-
-  const iconMap: Record<string, typeof PeopleIcon> = {
-    competitors: PeopleIcon,
-    splits: LeaderboardIcon,
-    groups: GroupWorkIcon,
-    teams: Diversity3Icon,
-  };
 
   return (
     <Paper
@@ -44,7 +31,7 @@ export function BottomNav() {
         showLabels={false}
       >
         {EVENT_TABS.map((tab) => {
-          const Icon = iconMap[tab.path] ?? PeopleIcon;
+          const Icon = tab.icon;
           return (
             <BottomNavigationAction
               key={tab.path}

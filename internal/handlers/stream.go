@@ -1,8 +1,61 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"bufio"
+	"fmt"
+	"log"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/openeventor/openeventor/internal/auth"
+	"github.com/valyala/fasthttp"
+)
+
+// Stream handles SSE connections for real-time event updates.
+// Auth: JWT via ?jwt= query param (for monitor UI).
 func (h *Handler) Stream(c *fiber.Ctx) error {
-	// TODO: implement SSE stream
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{"error": "not implemented"})
+	// Authenticate via JWT query param.
+	jwtToken := c.Query("jwt")
+	if jwtToken == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing jwt query param"})
+	}
+	_, err := auth.ValidateAccessToken(jwtToken, h.Config.JWTSecret)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token"})
+	}
+
+	eventID := c.Params("eventId")
+
+	// Verify event DB exists.
+	if _, err := h.DB.EventDB(eventID); err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "event not found"})
+	}
+
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no")
+
+	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+		clientCh := h.SSE.Register(eventID)
+		defer h.SSE.Unregister(eventID, clientCh)
+
+		// Send initial keepalive so the client knows the connection is established.
+		fmt.Fprintf(w, ": connected\n\n")
+		if err := w.Flush(); err != nil {
+			return
+		}
+
+		for msg := range clientCh {
+			_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, msg.Data)
+			if err != nil {
+				log.Printf("SSE write error (event %s): %v", eventID, err)
+				return
+			}
+			if err := w.Flush(); err != nil {
+				return
+			}
+		}
+	}))
+
+	return nil
 }

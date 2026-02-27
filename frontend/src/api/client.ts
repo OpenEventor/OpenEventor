@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'openeventor_token';
+const REFRESH_TOKEN_KEY = 'openeventor_refresh_token';
 
 export class ApiError extends Error {
   status: number;
@@ -8,6 +9,38 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
   }
+}
+
+// Refresh lock: prevent multiple concurrent refresh attempts.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function tryRefresh(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.token) {
+      localStorage.setItem(TOKEN_KEY, data.token);
+      return data.token as string;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = tryRefresh().finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -21,7 +54,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(path, { ...options, headers });
+  let response = await fetch(path, { ...options, headers });
+
+  // Auto-refresh on 401 (skip auth endpoints to avoid loops).
+  if (response.status === 401 && !path.startsWith('/api/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers.set('Authorization', `Bearer ${newToken}`);
+      response = await fetch(path, { ...options, headers });
+    }
+  }
 
   if (!response.ok) {
     let message = response.statusText;
@@ -70,4 +112,9 @@ export function setStoredToken(token: string): void {
 
 export function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function setStoredRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
 }

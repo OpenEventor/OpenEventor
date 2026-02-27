@@ -82,7 +82,8 @@ CREATE TABLE settings (
 CREATE TABLE competitors (
     id TEXT PRIMARY KEY,
     bib TEXT,                      -- bib number (may be empty)
-    card TEXT,                     -- timing device ID (links to passings)
+    card1 TEXT,                    -- primary timing device ID (links to passings)
+    card2 TEXT,                    -- secondary timing device ID (e.g. backup chip)
     team_id TEXT,
     group_id TEXT,
     course_id TEXT,                -- direct course assignment (overrides group)
@@ -175,7 +176,7 @@ CREATE TABLE passings (
     id TEXT PRIMARY KEY,
     card TEXT NOT NULL,            -- links to competitor.card
     checkpoint TEXT NOT NULL,      -- control point name (plain text)
-    timestamp_utc TEXT NOT NULL,   -- ISO 8601 UTC
+    timestamp REAL NOT NULL DEFAULT 0, -- unix seconds (2 decimal places)
     enabled INTEGER DEFAULT 1,    -- 0 = disabled/ignored
     source TEXT,                   -- origin identifier (e.g., "reader-1", "manual")
     created_at TEXT NOT NULL,
@@ -218,7 +219,8 @@ CREATE INDEX idx_checkins_competitor ON checkins(competitor_id);
 CREATE INDEX idx_payments_competitor ON payments(competitor_id);
 CREATE INDEX idx_passings_card ON passings(card);
 CREATE INDEX idx_passings_checkpoint ON passings(checkpoint);
-CREATE INDEX idx_competitors_card ON competitors(card);
+CREATE INDEX idx_competitors_card1 ON competitors(card1);
+CREATE INDEX idx_competitors_card2 ON competitors(card2);
 CREATE INDEX idx_competitors_group ON competitors(group_id);
 CREATE INDEX idx_competitors_course ON competitors(course_id);
 CREATE INDEX idx_groups_course ON groups(course_id);

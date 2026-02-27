@@ -47,6 +47,7 @@ func (m *Manager) SystemDB() *sql.DB {
 }
 
 // EventDB returns (or opens) the database for the given event ID.
+// The database file must already exist on disk; use CreateEventDB to create a new one.
 func (m *Manager) EventDB(eventID string) (*sql.DB, error) {
 	m.mu.RLock()
 	db, ok := m.eventDBs[eventID]
@@ -65,6 +66,12 @@ func (m *Manager) EventDB(eventID string) (*sql.DB, error) {
 
 	filename := fmt.Sprintf("event_%s.db", eventID)
 	dbPath := filepath.Join(m.dataDir, filename)
+
+	// Check that the file exists — don't let SQLite silently create it.
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("event db %s does not exist", eventID)
+	}
+
 	db, err := openDB(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open event db %s: %w", eventID, err)
@@ -77,6 +84,43 @@ func (m *Manager) EventDB(eventID string) (*sql.DB, error) {
 
 	m.eventDBs[eventID] = db
 	return db, nil
+}
+
+// CreateEventDB creates a new event database file and returns its connection.
+func (m *Manager) CreateEventDB(eventID string) (*sql.DB, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	filename := fmt.Sprintf("event_%s.db", eventID)
+	dbPath := filepath.Join(m.dataDir, filename)
+
+	db, err := openDB(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("create event db %s: %w", eventID, err)
+	}
+
+	if err := RunMigrations(db, "event"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate event db %s: %w", eventID, err)
+	}
+
+	m.eventDBs[eventID] = db
+	return db, nil
+}
+
+// DataDir returns the data directory path.
+func (m *Manager) DataDir() string {
+	return m.dataDir
+}
+
+// CloseEventDB closes and removes the cached connection for an event.
+func (m *Manager) CloseEventDB(eventID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if db, ok := m.eventDBs[eventID]; ok {
+		db.Close()
+		delete(m.eventDBs, eventID)
+	}
 }
 
 // Close closes all open database connections.

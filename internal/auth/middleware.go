@@ -29,8 +29,12 @@ func RequireJWT(secret string) fiber.Handler {
 	}
 }
 
-// RequireEventToken returns Fiber middleware that checks the event-token query param or header.
-func RequireEventToken() fiber.Handler {
+// TokenValidator checks whether a token is valid for the given event.
+type TokenValidator func(eventID, token string) bool
+
+// RequireEventToken returns Fiber middleware that validates the event token
+// from the ?token= query param or X-Event-Token header.
+func RequireEventToken(validate TokenValidator) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Query("token")
 		if token == "" {
@@ -40,7 +44,11 @@ func RequireEventToken() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing event token"})
 		}
 
-		// TODO: validate token against event settings in DB
+		eventID := c.Params("eventId")
+		if !validate(eventID, token) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid event token"})
+		}
+
 		c.Locals("eventToken", token)
 		return c.Next()
 	}

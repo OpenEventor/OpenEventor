@@ -13,14 +13,18 @@ import {
   InputAdornment,
   ButtonBase,
   Stack,
+  Divider,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import {
   People as PeopleIcon,
-  Leaderboard as LeaderboardIcon,
-  GroupWork as GroupWorkIcon,
-  Diversity3 as Diversity3Icon,
+  DesktopWindows as MonitorIcon,
+  Description as ProtocolsIcon,
+  Route as DistancesIcon,
+  GroupWork as GroupsIcon,
+  SwapVert as PassingsIcon,
+  Diversity3 as TeamsIcon,
   MoreHoriz as MoreHorizIcon,
   Settings as SettingsIcon,
   LightMode as LightModeIcon,
@@ -29,6 +33,8 @@ import {
   Logout as LogoutIcon,
   Search as SearchIcon,
   Palette as PaletteIcon,
+  Apps as AppsIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
@@ -39,9 +45,15 @@ import logoSvg from "../../assets/logo.svg";
 
 export const EVENT_TABS = [
   { path: "competitors", label: "Competitors", icon: PeopleIcon },
-  { path: "splits", label: "Splits", icon: LeaderboardIcon },
-  { path: "groups", label: "Groups", icon: GroupWorkIcon },
-  { path: "teams", label: "Teams", icon: Diversity3Icon },
+  { path: "monitor", label: "Monitor", icon: MonitorIcon },
+  { path: "protocols", label: "Protocols", icon: ProtocolsIcon },
+] as const;
+
+export const MORE_TABS = [
+  { path: "distances", label: "Distances", icon: DistancesIcon },
+  { path: "groups", label: "Groups", icon: GroupsIcon },
+  { path: "passings", label: "Passings", icon: PassingsIcon },
+  { path: "teams", label: "Teams", icon: TeamsIcon },
 ] as const;
 
 interface AppBarProps {
@@ -120,20 +132,50 @@ export function AppBar({ withSearch = false }: AppBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(
-    null,
-  );
+  const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
+  const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const handleSettingsClose = () => setSettingsAnchor(null);
+  const handleMoreClose = () => setMoreAnchor(null);
 
+  const allTabs = [...EVENT_TABS, ...MORE_TABS];
   const activeTab = eventId
-    ? EVENT_TABS.find((tab) => location.pathname.includes(`/${tab.path}`))?.path
+    ? allTabs.find((tab) => location.pathname.includes(`/${tab.path}`))?.path
     : undefined;
+  const isMoreActive = MORE_TABS.some((tab) => tab.path === activeTab);
 
   const isCompact = compactView;
   const showTabsInToolbar = eventId && !isMobile && isCompact;
   const showSecondRow = eventId && !isMobile && !isCompact;
+
+  const moreMenu: DropDownMenuConfig = useMemo(
+    () => ({
+      items: [
+        ...MORE_TABS.map((tab) => ({
+          icon: <tab.icon />,
+          text: tab.label,
+          action: () => {
+            navigate(`/events/${eventId}/${tab.path}`);
+            handleMoreClose();
+          },
+        })),
+        {
+          Component: <Divider sx={{ my: 0.5 }} />,
+        },
+        {
+          icon: <AppsIcon />,
+          text: "All modules",
+          action: () => {
+            navigate(`/events/${eventId}/modules`);
+            handleMoreClose();
+          },
+        },
+      ],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eventId],
+  );
 
   const settingsMenu: DropDownMenuConfig = useMemo(
     () => ({
@@ -141,10 +183,19 @@ export function AppBar({ withSearch = false }: AppBarProps) {
         ...(eventId
           ? [
               {
+                icon: <ArrowBackIcon />,
+                text: "Back to event list",
+                action: () => {
+                  navigate("/events");
+                  handleSettingsClose();
+                },
+              },
+              {
                 icon: <SettingsIcon />,
                 text: "Event settings",
                 action: () => {
                   navigate(`/events/${eventId}/settings`);
+                  handleSettingsClose();
                 },
               },
             ]
@@ -209,7 +260,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
     <>
       <PrivacyScreen open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <MuiAppBar
-        position="static"
+        position="sticky"
         elevation={0}
         color="default"
         sx={{
@@ -282,7 +333,14 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 );
               })}
               <Tooltip title="More" arrow>
-                <IconButton sx={{ opacity: 0.5 }}>
+                <IconButton
+                  onClick={(e) => setMoreAnchor(e.currentTarget)}
+                  sx={{
+                    bgcolor: isMoreActive ? "action.selected" : "transparent",
+                    borderRadius: 1,
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
                   <MoreHorizIcon />
                 </IconButton>
               </Tooltip>
@@ -329,6 +387,16 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "right" }}
             width={220}
+          />
+
+          <DropDownMenu
+            open={Boolean(moreAnchor)}
+            onClose={handleMoreClose}
+            menu={moreMenu}
+            anchorEl={moreAnchor}
+            anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+            transformOrigin={{ vertical: "top", horizontal: "left" }}
+            width={180}
           />
         </Toolbar>
 
@@ -387,10 +455,12 @@ export function AppBar({ withSearch = false }: AppBarProps) {
               sx={{
                 display: "flex",
                 alignItems: "stretch",
-                borderBottom: "2px solid transparent",
+                borderBottom: isMoreActive ? "2px solid" : "2px solid transparent",
+                borderColor: isMoreActive ? "primary.main" : "transparent",
               }}
             >
               <ButtonBase
+                onClick={(e) => setMoreAnchor(e.currentTarget)}
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -399,15 +469,15 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                   my: 0.5,
                   mx: 0.25,
                   borderRadius: 1,
-                  color: "text.secondary",
-                  opacity: 0.5,
+                  color: isMoreActive ? "text.primary" : "text.secondary",
+                  fontWeight: isMoreActive ? 500 : 400,
                   "&:hover": {
                     bgcolor: "action.hover",
                   },
                 }}
               >
                 <MoreHorizIcon fontSize="small" />
-                <Typography variant="body2">More</Typography>
+                <Typography variant="body2" sx={{ fontWeight: "inherit" }}>More</Typography>
               </ButtonBase>
             </Box>
           </Box>

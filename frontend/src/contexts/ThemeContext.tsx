@@ -83,16 +83,35 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
       createTheme({
         palette: {
           mode: resolvedMode,
-          primary: { main: '#D87000' },
+          primary: { main: highContrast ? (resolvedMode === 'dark' ? '#FFFFFF' : '#000000') : '#D87000' },
           ...(highContrast && {
             divider: resolvedMode === 'dark' ? '#FFFFFF' : '#000000',
           }),
-          // background: resolvedMode === 'dark'
-          //   ? { default: '#0C1116', paper: '#020408' }
-          //   : { default: '#FFFFFF', paper: '#F7F8FA' },
         },
-        ...(highContrast && {
-          components: {
+        components: {
+          MuiPaper: {
+            defaultProps: {
+              elevation: 0,
+            },
+          },
+          MuiButton: {
+            defaultProps: {
+              disableElevation: true,
+            },
+            styleOverrides: {
+              root: {
+                textTransform: 'none',
+              },
+            },
+          },
+          ...(highContrast && {
+            MuiOutlinedInput: {
+              styleOverrides: {
+                notchedOutline: {
+                  borderColor: resolvedMode === 'dark' ? '#FFFFFF' : '#000000',
+                },
+              },
+            },
             MuiDataGrid: {
               styleOverrides: {
                 root: {
@@ -100,8 +119,8 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
                 },
               },
             },
-          },
-        }),
+          }),
+        },
       }),
     [resolvedMode, highContrast],
   );

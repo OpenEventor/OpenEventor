@@ -11,6 +11,7 @@ import {
   getStoredToken,
   setStoredToken,
   clearStoredToken,
+  setStoredRefreshToken,
 } from '../api/client.ts';
 
 interface User {
@@ -39,6 +40,7 @@ export function useAuth(): AuthContextValue {
 
 interface LoginResponse {
   token: string;
+  refreshToken: string;
   user: User;
 }
 
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
     setStoredToken(data.token);
+    setStoredRefreshToken(data.refreshToken);
     setToken(data.token);
     setUser(data.user);
   }, []);
