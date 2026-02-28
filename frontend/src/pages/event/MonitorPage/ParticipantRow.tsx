@@ -1,8 +1,15 @@
-import { Box } from '@mui/material';
+import { useRef, useCallback, useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { Box, ButtonBase } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { ParticipantGroup } from './useMonitorStore';
 import ParticipantHeader from './ParticipantHeader';
 import PassingBlock from './PassingBlock';
 import GapIndicator from './GapIndicator';
+import PassingsEditor from './PassingsEditor';
+
+const BTN_WIDTH = 24;
 
 interface ParticipantRowProps {
   group: ParticipantGroup;
@@ -10,6 +17,35 @@ interface ParticipantRowProps {
 }
 
 export default function ParticipantRow({ group, height }: ParticipantRowProps) {
+  const { eventId } = useParams<{ eventId: string }>();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    mode: 'edit' | 'add-before' | 'add-after';
+    index: number;
+  } | null>(null);
+
+  const checkOverflow = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) setOverflows(el.scrollWidth > el.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+  }, [group.passings.length, checkOverflow]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [checkOverflow]);
+
+  const scroll = useCallback((dir: number) => {
+    scrollRef.current?.scrollBy({ left: dir * 100, behavior: 'smooth' });
+  }, []);
+
   // Compute deltas: time difference from previous enabled passing.
   const deltas: (number | null)[] = [];
   let prevEnabledTimestamp: number | null = null;
@@ -25,6 +61,16 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
     }
   }
 
+  const btnSx = {
+    width: BTN_WIDTH,
+    minWidth: BTN_WIDTH,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'action.active',
+    '&:hover': { bgcolor: 'action.hover' },
+  } as const;
+
   return (
     <Box
       sx={{
@@ -38,26 +84,59 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
     >
       <ParticipantHeader competitor={group.competitor} cards={group.cards} />
 
+      {overflows ? (
+        <ButtonBase onClick={() => scroll(-1)} sx={btnSx}>
+          <ChevronLeftIcon fontSize="small" />
+        </ButtonBase>
+      ) : (
+        <Box sx={{ width: BTN_WIDTH, minWidth: BTN_WIDTH }} />
+      )}
+
       <Box
+        ref={scrollRef}
         sx={{
           display: 'flex',
           alignItems: 'stretch',
           flex: 1,
           overflowX: 'auto',
           overflowY: 'hidden',
+          scrollbarWidth: 'none',          // Firefox
+          '&::-webkit-scrollbar': { display: 'none' }, // Chrome/Safari
           py: 0.25,
-          '&::-webkit-scrollbar': { height: 4 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: 'action.disabled', borderRadius: 2 },
         }}
       >
-        <GapIndicator />
+        <GapIndicator onClick={() => setDialogState({ mode: 'add-before', index: 0 })} />
         {group.passings.map((p, i) => (
           <Box key={p.id} sx={{ display: 'flex', alignItems: 'stretch' }}>
-            <PassingBlock passing={p} delta={deltas[i]} />
-            <GapIndicator />
+            <PassingBlock
+              passing={p}
+              delta={deltas[i]}
+              onMenuAction={(action) => setDialogState({ mode: action, index: i })}
+            />
+            <GapIndicator onClick={() => setDialogState({ mode: 'add-after', index: i })} />
           </Box>
         ))}
       </Box>
+
+      {overflows ? (
+        <ButtonBase onClick={() => scroll(1)} sx={btnSx}>
+          <ChevronRightIcon fontSize="small" />
+        </ButtonBase>
+      ) : (
+        <Box sx={{ width: BTN_WIDTH, minWidth: BTN_WIDTH }} />
+      )}
+
+      {dialogState && eventId && (
+        <PassingsEditor
+          open
+          onClose={() => setDialogState(null)}
+          eventId={eventId}
+          card={group.cards[0]}
+          passings={group.passings}
+          initialIndex={dialogState.index}
+          initialMode={dialogState.mode}
+        />
+      )}
     </Box>
   );
 }

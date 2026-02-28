@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Loki from 'lokijs';
 import type { Passing, Competitor } from '../../../api/types';
 
@@ -52,6 +52,41 @@ interface CompetitorDeleteAction {
 
 type PassingAction = PassingCreateAction | PassingUpdateAction | PassingDeleteAction;
 type CompetitorAction = CompetitorUpdateAction | CompetitorDeleteAction;
+
+// ── Fresh passing tracking (module-level, read by PassingBlock) ───
+
+export const freshPassingIds = new Set<string>();
+
+// ── Render lock (module-level, prevents bump while editing) ───────
+
+export const renderLock = {
+  count: 0,
+  /** Set by useMonitorStore — calls bump() to catch up after unlock. */
+  onUnlock: null as (() => void) | null,
+  lock() {
+    this.count++;
+  },
+  unlock() {
+    this.count = Math.max(0, this.count - 1);
+    if (this.count === 0 && this.onUnlock) {
+      this.onUnlock();
+    }
+  },
+  get locked() {
+    return this.count > 0;
+  },
+};
+
+// ── Pause refresh (module-level, triggers re-render after manual edits while paused) ──
+
+export const pauseRefresh = {
+  /** Set by MonitorPage — calls bump() to refresh the view while paused. */
+  onRefresh: null as (() => void) | null,
+  /** Request a refresh after a manual edit (delays to let SSE arrive). */
+  request() {
+    setTimeout(() => this.onRefresh?.(), 300);
+  },
+};
 
 // ── Store ──────────────────────────────────────────────────────────
 
@@ -136,6 +171,12 @@ export function useMonitorStore() {
   const [version, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
+  // Wire render lock to bump on unlock.
+  useEffect(() => {
+    renderLock.onUnlock = bump;
+    return () => { renderLock.onUnlock = null; };
+  }, [bump]);
+
   /** Load initial data from REST (replaces any existing data). */
   const loadInitial = useCallback(
     (passings: Passing[], competitors: Competitor[]) => {
@@ -172,6 +213,7 @@ export function useMonitorStore() {
           if (!existing) {
             store.passings.insert(action.passing);
           }
+          freshPassingIds.add(action.passing.id);
         } else if (action.action === 'update') {
           const existing = store.passings.findOne({ id: action.passing.id } as LokiQuery<Passing>);
           if (existing) {
@@ -180,6 +222,7 @@ export function useMonitorStore() {
           } else {
             store.passings.insert(action.passing);
           }
+          freshPassingIds.add(action.passing.id);
         } else if (action.action === 'delete') {
           const existing = store.passings.findOne({ id: action.id } as LokiQuery<Passing>);
           if (existing) {

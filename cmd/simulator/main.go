@@ -24,6 +24,7 @@ func main() {
 	eventID := flag.String("event", "", "event ID (required)")
 	token := flag.String("token", "", "event token (required)")
 	numCards := flag.Int("cards", 10, "number of simulated cards")
+	batchSize := flag.Int("batch", 1, "number of passings to send per tick")
 	minDelay := flag.Float64("min-delay", 1.0, "minimum delay between sends (seconds)")
 	maxDelay := flag.Float64("max-delay", 3.0, "maximum delay between sends (seconds)")
 	flag.Parse()
@@ -59,17 +60,33 @@ func main() {
 			return
 		}
 
-		card := active[rand.Intn(len(active))]
-		cpIdx := cardProgress[card]
-		checkpoint := checkpoints[cpIdx]
-		cardProgress[card]++
+		batch := make([]passing, 0, *batchSize)
+		for range *batchSize {
+			if len(active) == 0 {
+				break
+			}
+			idx := rand.Intn(len(active))
+			card := active[idx]
+			cpIdx := cardProgress[card]
+			checkpoint := checkpoints[cpIdx]
+			cardProgress[card]++
 
-		batch := []passing{{
-			Card:       card,
-			Checkpoint: checkpoint,
-			Timestamp:  float64(time.Now().UnixMilli()) / 1000.0,
-			Source:     "simulator",
-		}}
+			batch = append(batch, passing{
+				Card:       card,
+				Checkpoint: checkpoint,
+				Timestamp:  float64(time.Now().UnixMilli()) / 1000.0,
+				Source:     "simulator",
+			})
+
+			// Remove card from active if it finished all checkpoints.
+			if cardProgress[card] >= len(checkpoints) {
+				active = append(active[:idx], active[idx+1:]...)
+			}
+		}
+
+		if len(batch) == 0 {
+			continue
+		}
 
 		body, _ := json.Marshal(batch)
 		resp, err := http.Post(url, "application/json", bytes.NewReader(body))
@@ -79,7 +96,10 @@ func main() {
 			respBody, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if resp.StatusCode == 201 {
-				log.Printf("card=%s checkpoint=%s (%d/%d active)", card, checkpoint, len(active), *numCards)
+				for _, p := range batch {
+					log.Printf("card=%s checkpoint=%s", p.Card, p.Checkpoint)
+				}
+				log.Printf("  sent %d passings (%d/%d active)", len(batch), len(active), *numCards)
 			} else {
 				log.Printf("Server error %d: %s", resp.StatusCode, string(respBody))
 			}

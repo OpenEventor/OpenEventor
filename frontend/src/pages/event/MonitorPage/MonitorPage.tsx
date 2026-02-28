@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Box, IconButton, Toolbar, Typography } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { api } from '../../../api/client';
-import type { Passing, Competitor } from '../../../api/types';
-import { useEventSSE } from '../../../hooks/useEventSSE';
-import { useMonitorStore, type ParticipantGroup } from './useMonitorStore';
-import ParticipantRow from './ParticipantRow';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Box, Chip, IconButton, Stack, Typography } from "@mui/material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
+import MusicNoteIcon from "@mui/icons-material/MusicNote";
+import MusicOffIcon from "@mui/icons-material/MusicOff";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { api } from "../../../api/client";
+import type { Passing, Competitor } from "../../../api/types";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import { useEventSSE } from "../../../hooks/useEventSSE";
+import { useMonitorStore, renderLock, pauseRefresh } from "./useMonitorStore";
+import { usePassingSound } from "./usePassingSound";
+import ParticipantRow from "./ParticipantRow";
 
 const ROW_HEIGHT = 56;
 
@@ -19,20 +23,28 @@ export function MonitorPage() {
   const [playing, setPlaying] = useState(true);
 
   const store = useMonitorStore();
+  const { play: playSound, muted, toggleMute } = usePassingSound();
 
-  // Frozen snapshot for when paused.
-  const [frozenGroups, setFrozenGroups] = useState<ParticipantGroup[] | null>(null);
-  const displayGroups = playing ? store.groups : (frozenGroups ?? store.groups);
+  // Frozen participant key order for when paused (rows don't reorder, new ones hidden).
+  const [frozenKeys, setFrozenKeys] = useState<string[] | null>(null);
+  const displayGroups = (() => {
+    if (playing || !frozenKeys) return store.groups;
+    const groupMap = new Map(store.groups.map((g) => [g.key, g]));
+    return frozenKeys.flatMap((key) => {
+      const g = groupMap.get(key);
+      return g ? [g] : [];
+    });
+  })();
 
   // Toggle play/pause.
   const handleTogglePlay = useCallback(() => {
     setPlaying((prev) => {
       if (prev) {
-        // Pausing — freeze current state.
-        setFrozenGroups(store.groups);
+        // Pausing — freeze current row order.
+        setFrozenKeys(store.groups.map((g) => g.key));
       } else {
-        // Resuming — clear frozen state, live data will be used.
-        setFrozenGroups(null);
+        // Resuming — clear frozen order, live data will be used.
+        setFrozenKeys(null);
       }
       return !prev;
     });
@@ -55,32 +67,49 @@ export function MonitorPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load data');
+          setError(err instanceof Error ? err.message : "Failed to load data");
           setLoading(false);
         }
       }
     }
     void load();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   // Handle SSE messages.
   const playingRef = useRef(playing);
   playingRef.current = playing;
 
+  // Wire pauseRefresh: when called after manual edits, bump the store while paused.
+  useEffect(() => {
+    pauseRefresh.onRefresh = () => {
+      if (!playingRef.current) {
+        store.bump();
+      }
+    };
+    return () => {
+      pauseRefresh.onRefresh = null;
+    };
+  }, [store]);
+
   const handleSSE = useCallback(
     (msg: { event: string; data: unknown }) => {
       const changed = store.applySSE(msg.event, msg.data);
-      if (changed && playingRef.current) {
+      if (changed && playingRef.current && !renderLock.locked) {
         store.bump();
+        if (msg.event === "passing") {
+          playSound();
+        }
       }
     },
-    [store],
+    [store, playSound],
   );
 
-  useEventSSE({
-    eventId: eventId ?? '',
+  const { status: sseStatus, reconnect: sseReconnect } = useEventSSE({
+    eventId: eventId ?? "",
     onMessage: handleSSE,
     enabled: !loading && !error,
   });
@@ -111,39 +140,95 @@ export function MonitorPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar variant="dense" disableGutters sx={{ px: 1, minHeight: 40, gap: 1 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          Monitor
-        </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", m: -2 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{
+          px: 1,
+          height: 50,
+          gap: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          flexShrink: 0,
+        }}
+      >
+        <Chip
+          icon={<FiberManualRecordIcon />}
+          label={
+            sseStatus === "online"
+              ? "Online"
+              : sseStatus === "connecting"
+                ? "Connecting..."
+                : "Offline"
+          }
+          variant="outlined"
+          size="medium"
+          onClick={sseStatus === "offline" ? sseReconnect : undefined}
+          sx={{
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            cursor: sseStatus === "offline" ? "pointer" : "default",
+            "& .MuiChip-icon": {
+              fontSize: 12,
+              color:
+                sseStatus === "online"
+                  ? "success.main"
+                  : sseStatus === "connecting"
+                    ? "warning.main"
+                    : "error.main",
+            },
+          }}
+        />
 
         <IconButton
           size="small"
           onClick={handleTogglePlay}
-          color={playing ? 'primary' : 'warning'}
-          title={playing ? 'Pause' : 'Play'}
+          color={playing ? "primary" : "warning"}
+          title={playing ? "Pause" : "Play"}
         >
-          {playing ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+          {playing ? (
+            <PauseIcon fontSize="small" />
+          ) : (
+            <PlayArrowIcon fontSize="small" />
+          )}
         </IconButton>
 
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+        <IconButton
+          size="small"
+          onClick={toggleMute}
+          color={muted ? "default" : "primary"}
+          title={muted ? "Unmute" : "Mute"}
+        >
+          {muted ? (
+            <MusicOffIcon fontSize="small" />
+          ) : (
+            <MusicNoteIcon fontSize="small" />
+          )}
+        </IconButton>
+
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ ml: "auto" }}
+        >
           {displayGroups.length} participants
         </Typography>
-      </Toolbar>
+      </Stack>
 
       <Box
         ref={parentRef}
         sx={{
           flex: 1,
-          overflow: 'auto',
-          position: 'relative',
+          overflow: "auto",
+          position: "relative",
         }}
       >
         <Box
           sx={{
             height: virtualizer.getTotalSize(),
-            width: '100%',
-            position: 'relative',
+            width: "100%",
+            position: "relative",
           }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -152,10 +237,10 @@ export function MonitorPage() {
               <Box
                 key={group.key}
                 sx={{
-                  position: 'absolute',
+                  position: "absolute",
                   top: 0,
                   left: 0,
-                  width: '100%',
+                  width: "100%",
                   height: virtualRow.size,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/openeventor/openeventor/internal/auth"
@@ -45,14 +46,34 @@ func (h *Handler) Stream(c *fiber.Ctx) error {
 			return
 		}
 
-		for msg := range clientCh {
-			_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, msg.Data)
-			if err != nil {
-				log.Printf("SSE write error (event %s): %v", eventID, err)
-				return
-			}
-			if err := w.Flush(); err != nil {
-				return
+		// Heartbeat ticker — sends SSE comment every 15s so the client
+		// can detect a dead connection quickly (instead of waiting for TCP timeout).
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case msg, ok := <-clientCh:
+				if !ok {
+					return
+				}
+				_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, msg.Data)
+				if err != nil {
+					log.Printf("SSE write error (event %s): %v", eventID, err)
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			case <-ticker.C:
+				// SSE comment line — ignored by EventSource parser but
+				// keeps the TCP connection alive and detects broken pipes.
+				if _, err := fmt.Fprintf(w, ": ping\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
 			}
 		}
 	}))
