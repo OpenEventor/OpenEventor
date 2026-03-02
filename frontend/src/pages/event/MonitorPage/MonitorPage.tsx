@@ -72,6 +72,13 @@ export function MonitorPage() {
     });
   }, [rawDisplayGroups, showDisabled]);
 
+  // Unfiltered passings by group key (for editors that always need all passings).
+  const allPassingsByKey = useMemo(() => {
+    const map = new Map<string, Passing[]>();
+    for (const g of rawDisplayGroups) map.set(g.key, g.passings);
+    return map;
+  }, [rawDisplayGroups]);
+
   // Toggle play/pause.
   const handleTogglePlay = useCallback(() => {
     setPlaying((prev) => {
@@ -390,7 +397,7 @@ export function MonitorPage() {
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
               >
-                <ParticipantRow group={group} height={ROW_HEIGHT} />
+                <ParticipantRow group={group} allPassings={allPassingsByKey.get(group.key) ?? group.passings} height={ROW_HEIGHT} />
               </Box>
             );
           })}

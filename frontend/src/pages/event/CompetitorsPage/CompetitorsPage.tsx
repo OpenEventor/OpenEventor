@@ -449,6 +449,7 @@ export function CompetitorsPage() {
         onSaved={handleDialogSaved}
         onEditClick={() => setDialogMode('edit')}
         eventId={eventId || ''}
+        competitorId={selectedCompetitor?.id}
         competitor={selectedCompetitor}
       />
 

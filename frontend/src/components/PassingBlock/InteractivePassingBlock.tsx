@@ -1,6 +1,6 @@
 import { useState, type MouseEvent } from 'react';
 import { useTheme } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
+import ViewDayIcon from '@mui/icons-material/ViewDay';
 import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import type { Passing } from '../../api/types';
@@ -78,7 +78,7 @@ export default function InteractivePassingBlock({
   const menu: DropDownMenuConfig = {
     title: passing.checkpoint,
     items: [
-      { icon: <EditIcon fontSize="small" color="primary" />, text: 'Edit passing', action: () => fireAction('edit') },
+      { icon: <ViewDayIcon fontSize="small" color="primary" />, text: 'Edit passing', action: () => fireAction('edit') },
       enabled
         ? { icon: <DisabledByDefaultIcon fontSize="small" color="error" />, text: 'Disable', action: toggleEnabled }
         : { icon: <CheckCircleIcon fontSize="small" color="success" />, text: 'Enable', action: toggleEnabled },

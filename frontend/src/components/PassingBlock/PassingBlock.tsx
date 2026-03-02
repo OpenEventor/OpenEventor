@@ -43,10 +43,11 @@ export function formatDelta(seconds: number): string {
   return m > 0 ? `${sign}${m}:${sFixed.padStart(4, '0')}` : `${sign}${sFixed}`;
 }
 
-/** Compute deltas: time difference from previous enabled passing. */
-export function computeDeltas(passings: Passing[]): (number | null)[] {
+/** Compute deltas: time difference from previous enabled passing.
+ *  If startTimestamp is provided, the first enabled passing gets a delta relative to it. */
+export function computeDeltas(passings: Passing[], startTimestamp?: number | null): (number | null)[] {
   const deltas: (number | null)[] = [];
-  let prevEnabled: number | null = null;
+  let prevEnabled: number | null = startTimestamp ?? null;
   for (const p of passings) {
     if (p.enabled === 1 && prevEnabled !== null) {
       deltas.push(p.timestamp - prevEnabled);

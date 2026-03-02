@@ -140,7 +140,12 @@ export interface CompetitorDialogProps {
   onSaved: () => void;
   onEditClick?: () => void;
   eventId: string;
+  /** Competitor ID — used to fetch fresh data from API in view mode. */
+  competitorId?: string | null;
+  /** Full competitor object (used for edit/create form pre-fill). */
   competitor?: Competitor | null;
+  /** Show passings section in view mode (default: true). */
+  withPassings?: boolean;
 }
 
 function competitorToForm(c: Competitor): CompetitorFormData {
@@ -263,12 +268,13 @@ function PassingsStrip({ passings, eventId, onMenuAction, onAfterToggle }: {
 
 // ─── View Mode ───────────────────────────────────────────────
 
-function ViewContent({ competitor, passings, passingsLoading, eventId, onPassingsChanged }: {
+function ViewContent({ competitor, passings, passingsLoading, eventId, onPassingsChanged, withPassings }: {
   competitor: Competitor;
   passings: Passing[];
   passingsLoading: boolean;
   eventId: string;
   onPassingsChanged: () => void;
+  withPassings: boolean;
 }) {
   const c = competitor;
   const [editorState, setEditorState] = useState<{
@@ -406,17 +412,6 @@ function ViewContent({ competitor, passings, passingsLoading, eventId, onPassing
 
       {/* ── Right Column ── */}
       <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
-        {/* Cards */}
-        {(c.card1 || c.card2) && (
-          <Stack spacing={0.5}>
-            <ViewLabel>Cards</ViewLabel>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              {c.card1 && <Chip label={c.card1} size="small" color="success" />}
-              {c.card2 && <Chip label={c.card2} size="small" color="success" />}
-            </Stack>
-          </Stack>
-        )}
-
         {/* Entry number + Price row */}
         {(c.entryNumber || c.price) ? (
           <Stack direction="row" spacing={3}>
@@ -449,19 +444,30 @@ function ViewContent({ competitor, passings, passingsLoading, eventId, onPassing
           </Stack>
         ) : null}
 
+        {/* Cards */}
+        {(c.card1 || c.card2) && (
+          <Stack spacing={0.5}>
+            <ViewLabel>Cards</ViewLabel>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {c.card1 && <Chip label={c.card1} size="small" color="success" />}
+              {c.card2 && <Chip label={c.card2} size="small" color="success" />}
+            </Stack>
+          </Stack>
+        )}
+
         {/* Passings */}
-        {passingsLoading && (
+        {withPassings && passingsLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
             <CircularProgress size={24} />
           </Box>
         )}
-        {!passingsLoading && passings.length > 0 && <PassingsStrip
+        {withPassings && !passingsLoading && passings.length > 0 && <PassingsStrip
           passings={passings}
           eventId={eventId}
           onMenuAction={(action, index) => setEditorState({ mode: action, index })}
           onAfterToggle={onPassingsChanged}
         />}
-        {!passingsLoading && passings.length === 0 && card && (
+        {withPassings && !passingsLoading && passings.length === 0 && card && (
           <Stack spacing={0.5}>
             <ViewLabel>Passings (0)</ViewLabel>
             <Button
@@ -473,7 +479,7 @@ function ViewContent({ competitor, passings, passingsLoading, eventId, onPassing
             </Button>
           </Stack>
         )}
-        {editorState && card && (
+        {withPassings && editorState && card && (
           <PassingsEditor
             open
             onClose={() => setEditorState(null)}
@@ -714,7 +720,7 @@ function EditForm({ control, errors, saving }: {
 
 // ─── Main Dialog ─────────────────────────────────────────────
 
-export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, eventId, competitor }: CompetitorDialogProps) {
+export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, eventId, competitorId, competitor, withPassings = true }: CompetitorDialogProps) {
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
   const [saving, setSaving] = useState(false);
@@ -722,23 +728,67 @@ export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, ev
   const [passings, setPassings] = useState<Passing[]>([]);
   const [passingsLoading, setPassingsLoading] = useState(false);
 
+  // Fresh competitor data fetched from API on open (view mode).
+  const [fetchedCompetitor, setFetchedCompetitor] = useState<Competitor | null>(null);
+  const [competitorLoading, setCompetitorLoading] = useState(false);
+  const [competitorError, setCompetitorError] = useState<string | null>(null);
+
+  // Loading state for edit mode (re-fetch before populating the form).
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Resolve the ID: explicit competitorId prop, or from competitor object.
+  const resolvedId = competitorId ?? competitor?.id ?? null;
+
+  // In view mode, use fetched data. In edit/create, use the prop.
+  const viewCompetitor = fetchedCompetitor;
+
   const { control, handleSubmit, reset, formState: { errors } } = useForm<CompetitorFormData>({
     resolver: joiResolver(schema, { abortEarly: false, stripUnknown: true }),
     defaultValues: DEFAULT_VALUES,
   });
 
+  // Fetch competitor data when opening in view mode.
   useEffect(() => {
-    if (open && !isView) {
-      reset(competitor ? competitorToForm(competitor) : DEFAULT_VALUES);
-      setError(null);
+    if (!open || !isView || !resolvedId || !eventId) {
+      setFetchedCompetitor(null);
+      setCompetitorError(null);
+      return;
     }
-  }, [open, mode, competitor, reset, isView]);
+    setCompetitorLoading(true);
+    setCompetitorError(null);
+    api.get<Competitor>(`/api/events/${eventId}/competitors/${resolvedId}`)
+      .then(setFetchedCompetitor)
+      .catch((err) => { setFetchedCompetitor(null); setCompetitorError(err instanceof Error ? err.message : 'Failed to load'); })
+      .finally(() => setCompetitorLoading(false));
+  }, [open, isView, resolvedId, eventId]);
+
+  useEffect(() => {
+    if (!open || isView) return;
+    setError(null);
+
+    if (resolvedId && eventId) {
+      // Always re-fetch from API to get the freshest data.
+      setEditLoading(true);
+      api.get<Competitor>(`/api/events/${eventId}/competitors/${resolvedId}`)
+        .then((data) => {
+          reset(competitorToForm(data));
+        })
+        .catch((err) => {
+          // Fallback to prop data if available.
+          reset(competitor ? competitorToForm(competitor) : DEFAULT_VALUES);
+          setError(err instanceof Error ? err.message : 'Failed to load competitor data');
+        })
+        .finally(() => setEditLoading(false));
+    } else {
+      reset(competitor ? competitorToForm(competitor) : DEFAULT_VALUES);
+    }
+  }, [open, mode, resolvedId, eventId, competitor, reset, isView]);
 
   const fetchPassings = useCallback(() => {
-    if (!eventId || !competitor) return;
+    if (!eventId || !fetchedCompetitor) return;
     const cards: string[] = [];
-    if (competitor.card1) cards.push(competitor.card1);
-    if (competitor.card2) cards.push(competitor.card2);
+    if (fetchedCompetitor.card1) cards.push(fetchedCompetitor.card1);
+    if (fetchedCompetitor.card2) cards.push(fetchedCompetitor.card2);
     if (!cards.length) { setPassings([]); return; }
     setPassingsLoading(true);
     const params = new URLSearchParams();
@@ -747,20 +797,20 @@ export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, ev
       .then(setPassings)
       .catch(() => setPassings([]))
       .finally(() => setPassingsLoading(false));
-  }, [eventId, competitor]);
+  }, [eventId, fetchedCompetitor]);
 
   useEffect(() => {
-    if (!open || !isView) { setPassings([]); return; }
+    if (!open || !isView || !withPassings || !fetchedCompetitor) { setPassings([]); return; }
     fetchPassings();
-  }, [open, isView, fetchPassings]);
+  }, [open, isView, withPassings, fetchedCompetitor, fetchPassings]);
 
   const onSubmit = async (data: CompetitorFormData) => {
     setSaving(true);
     setError(null);
     try {
       const payload = formToPayload(data);
-      if (isEdit && competitor) {
-        await api.put(`/api/events/${eventId}/competitors/${competitor.id}`, payload);
+      if (isEdit && resolvedId) {
+        await api.put(`/api/events/${eventId}/competitors/${resolvedId}`, payload);
       } else {
         await api.post(`/api/events/${eventId}/competitors`, payload);
       }
@@ -777,12 +827,12 @@ export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, ev
     onClose();
   };
 
-  const competitorName = competitor
-    ? [competitor.lastName, competitor.firstName].filter(Boolean).join(' ') || 'Competitor'
+  const competitorName = viewCompetitor
+    ? [viewCompetitor.lastName, viewCompetitor.firstName].filter(Boolean).join(' ') || 'Competitor'
     : '';
 
   const title = isView
-    ? competitorName
+    ? (competitorName || 'Competitor')
     : isEdit
       ? 'Edit competitor'
       : 'New competitor';
@@ -808,9 +858,23 @@ export function CompetitorDialog({ open, mode, onClose, onSaved, onEditClick, ev
         </Box>
       </DialogTitle>
 
-      {isView && competitor ? (
-        <DialogContent dividers sx={{ p: 3, borderBottom: 'none' }}>
-          <ViewContent competitor={competitor} passings={passings} passingsLoading={passingsLoading} eventId={eventId} onPassingsChanged={fetchPassings} />
+      {isView ? (
+        competitorLoading ? (
+          <DialogContent dividers sx={{ p: 3, borderBottom: 'none', display: 'flex', justifyContent: 'center', minHeight: 200, alignItems: 'center' }}>
+            <CircularProgress size={32} />
+          </DialogContent>
+        ) : competitorError ? (
+          <DialogContent dividers sx={{ p: 3, borderBottom: 'none' }}>
+            <Alert severity="error">{competitorError}</Alert>
+          </DialogContent>
+        ) : viewCompetitor ? (
+          <DialogContent dividers sx={{ p: 3, borderBottom: 'none' }}>
+            <ViewContent competitor={viewCompetitor} passings={passings} passingsLoading={passingsLoading} eventId={eventId} onPassingsChanged={fetchPassings} withPassings={withPassings} />
+          </DialogContent>
+        ) : null
+      ) : editLoading ? (
+        <DialogContent dividers sx={{ p: 3, borderBottom: 'none', display: 'flex', justifyContent: 'center', minHeight: 200, alignItems: 'center' }}>
+          <CircularProgress size={32} />
         </DialogContent>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} noValidate>

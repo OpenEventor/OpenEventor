@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { Box, ButtonBase } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import type { Passing } from '../../../api/types';
 import type { ParticipantGroup } from './useMonitorStore';
 import { renderLock, pauseRefresh } from './useMonitorStore';
 import { useMonitorContext } from './MonitorContext';
@@ -10,15 +11,18 @@ import { computeDeltas } from '../../../components/PassingBlock/PassingBlock';
 import PassingBlock from './PassingBlock';
 import GapIndicator from '../../../components/GapIndicator/GapIndicator';
 import PassingsEditor from '../../../components/PassingsEditor/PassingsEditor';
+import { CompetitorDialog } from '../../event/CompetitorsPage/CompetitorDialog';
 
 const BTN_WIDTH = 24;
 
 interface ParticipantRowProps {
   group: ParticipantGroup;
+  /** Unfiltered passings (includes disabled) — used by editors. */
+  allPassings: Passing[];
   height: number;
 }
 
-export default function ParticipantRow({ group, height }: ParticipantRowProps) {
+export default function ParticipantRow({ group, allPassings, height }: ParticipantRowProps) {
   const { eventId } = useMonitorContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
@@ -26,6 +30,7 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
     mode: 'edit' | 'add-before' | 'add-after';
     index: number;
   } | null>(null);
+  const [competitorDialogMode, setCompetitorDialogMode] = useState<'view' | 'edit' | null>(null);
 
   const checkOverflow = useCallback(() => {
     const el = scrollRef.current;
@@ -76,6 +81,7 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
         cards={group.cards}
         courseName={group.courseName}
         groupName={group.groupName}
+        onShowCompetitor={() => { renderLock.lock(); setCompetitorDialogMode('view'); }}
       />
 
       {overflows ? (
@@ -126,7 +132,7 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
           onClose={() => setDialogState(null)}
           eventId={eventId}
           card={group.cards[0]}
-          passings={group.passings}
+          passings={allPassings}
           initialIndex={dialogState.index}
           initialMode={dialogState.mode}
           onEditorOpen={() => renderLock.lock()}
@@ -144,6 +150,17 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
           }
         />
       )}
+
+      <CompetitorDialog
+        open={competitorDialogMode !== null}
+        mode={competitorDialogMode ?? 'view'}
+        onClose={() => { setCompetitorDialogMode(null); renderLock.unlock(); }}
+        onSaved={() => { setCompetitorDialogMode(null); renderLock.unlock(); }}
+        onEditClick={() => setCompetitorDialogMode('edit')}
+        eventId={eventId}
+        competitorId={group.competitor?.id}
+        withPassings={false}
+      />
     </Box>
   );
 }

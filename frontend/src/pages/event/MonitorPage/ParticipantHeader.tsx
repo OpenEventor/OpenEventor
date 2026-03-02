@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
 import type { MonitorCompetitor } from './useMonitorStore';
 import DropDownMenu from '../../../components/DropDownMenu/DropDownMenu';
 import type { DropDownMenuConfig } from '../../../components/DropDownMenu/types';
@@ -14,6 +15,7 @@ interface ParticipantHeaderProps {
   groupName: string;
   status?: ParticipantStatus;
   highlight?: ParticipantHighlight;
+  onShowCompetitor?: () => void;
 }
 
 const HIGHLIGHT_BG = '#ffeb3b';
@@ -68,22 +70,24 @@ export default function ParticipantHeader({
   groupName,
   status,
   highlight,
+  onShowCompetitor,
 }: ParticipantHeaderProps) {
   const theme = useTheme();
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const handleContextMenu = (e: MouseEvent) => {
+    if (!competitor) return;
     e.preventDefault();
     e.stopPropagation();
     setMenuPos({ top: e.clientY, left: e.clientX });
   };
 
-  const menu: DropDownMenuConfig = {
-    title: competitor ? `#${competitor.bib}` : cards[0],
+  const menu: DropDownMenuConfig | null = competitor ? {
+    title: `#${competitor.bib}`,
     items: [
-      { text: 'Open competitor', action: () => { /* placeholder */ } },
+      { icon: <PersonIcon fontSize="small" />, text: 'Show competitor', action: () => { setMenuPos(null); onShowCompetitor?.(); } },
     ],
-  };
+  } : null;
 
   const borderColor = statusBorderColor(status);
 
@@ -222,13 +226,15 @@ export default function ParticipantHeader({
         )}
       </Box>
 
-      <DropDownMenu
-        open={menuPos !== null}
-        onClose={() => setMenuPos(null)}
-        menu={menu}
-        anchorPosition={menuPos ?? undefined}
-        width={180}
-      />
+      {menu && (
+        <DropDownMenu
+          open={menuPos !== null}
+          onClose={() => setMenuPos(null)}
+          menu={menu}
+          anchorPosition={menuPos ?? undefined}
+          width={180}
+        />
+      )}
     </>
   );
 }

@@ -95,6 +95,50 @@ func (h *Handler) ListCompetitors(c *fiber.Ctx) error {
 	return c.JSON(competitors)
 }
 
+// GetCompetitor returns a single competitor by ID.
+func (h *Handler) GetCompetitor(c *fiber.Ctx) error {
+	eventID := c.Params("eventId")
+	competitorID := c.Params("competitorId")
+
+	db, err := h.DB.EventDB(eventID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to open event database"})
+	}
+
+	columns := `id, bib, card1, card2, team_id, group_id, course_id,
+		        first_name, last_name, middle_name, first_name_int, last_name_int,
+		        gender, birth_date, birth_year,
+		        rank, rating,
+		        country, region, city,
+		        phone, email,
+		        start_time, time_adjustment,
+		        dsq, dsq_description, dns, dnf, out_of_rank,
+		        entry_number, price, is_paid, is_checkin,
+		        notes, created_at, updated_at`
+
+	var comp models.Competitor
+	err = db.QueryRow(`SELECT `+columns+` FROM competitors WHERE id = ?`, competitorID).Scan(
+		&comp.ID, &comp.Bib, &comp.Card1, &comp.Card2, &comp.TeamID, &comp.GroupID, &comp.CourseID,
+		&comp.FirstName, &comp.LastName, &comp.MiddleName, &comp.FirstNameInt, &comp.LastNameInt,
+		&comp.Gender, &comp.BirthDate, &comp.BirthYear,
+		&comp.Rank, &comp.Rating,
+		&comp.Country, &comp.Region, &comp.City,
+		&comp.Phone, &comp.Email,
+		&comp.StartTime, &comp.TimeAdjustment,
+		&comp.DSQ, &comp.DSQDescription, &comp.DNS, &comp.DNF, &comp.OutOfRank,
+		&comp.EntryNumber, &comp.Price, &comp.IsPaid, &comp.IsCheckin,
+		&comp.Notes, &comp.CreatedAt, &comp.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "competitor not found"})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "database error"})
+	}
+
+	return c.JSON(comp)
+}
+
 type competitorRequest struct {
 	Bib      string `json:"bib"`
 	Card1    string `json:"card1"`

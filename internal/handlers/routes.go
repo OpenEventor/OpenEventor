@@ -60,6 +60,7 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 
 	// Competitors
 	event.Get("/competitors", h.ListCompetitors)
+	event.Get("/competitors/:competitorId", h.GetCompetitor)
 	event.Post("/competitors", h.CreateCompetitor)
 	event.Put("/competitors/:competitorId", h.UpdateCompetitor)
 	event.Delete("/competitors/:competitorId", h.DeleteCompetitor)
