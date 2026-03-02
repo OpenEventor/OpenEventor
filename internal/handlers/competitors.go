@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -24,11 +25,17 @@ func (h *Handler) broadcastCompetitor(eventID, action string, comp models.Compet
 				"lastName":  comp.LastName,
 				"groupId":   comp.GroupID,
 				"courseId":   comp.CourseID,
+				"startTime": comp.StartTime,
+				"dsq":       comp.DSQ,
+				"dnf":       comp.DNF,
+				"dns":       comp.DNS,
 			},
 		}),
 	})
 }
 
+// ListCompetitors returns all competitors for an event (user JWT auth).
+// Optional query param: ?updated_after=<ISO8601> — returns only competitors with updated_at >= value.
 func (h *Handler) ListCompetitors(c *fiber.Ctx) error {
 	eventID := c.Params("eventId")
 
@@ -37,8 +44,8 @@ func (h *Handler) ListCompetitors(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to open event database"})
 	}
 
-	rows, err := db.Query(
-		`SELECT id, bib, card1, card2, team_id, group_id, course_id,
+	updatedAfter := c.Query("updated_after")
+	columns := `id, bib, card1, card2, team_id, group_id, course_id,
 		        first_name, last_name, middle_name, first_name_int, last_name_int,
 		        gender, birth_date, birth_year,
 		        rank, rating,
@@ -47,9 +54,19 @@ func (h *Handler) ListCompetitors(c *fiber.Ctx) error {
 		        start_time, time_adjustment,
 		        dsq, dsq_description, dns, dnf, out_of_rank,
 		        entry_number, price, is_paid, is_checkin,
-		        notes, created_at, updated_at
-		 FROM competitors ORDER BY created_at DESC`,
-	)
+		        notes, created_at, updated_at`
+
+	var rows *sql.Rows
+	if updatedAfter != "" {
+		rows, err = db.Query(
+			`SELECT `+columns+` FROM competitors WHERE updated_at >= ? ORDER BY created_at DESC`,
+			updatedAfter,
+		)
+	} else {
+		rows, err = db.Query(
+			`SELECT `+columns+` FROM competitors ORDER BY created_at DESC`,
+		)
+	}
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "database error"})
 	}

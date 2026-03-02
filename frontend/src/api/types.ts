@@ -85,6 +85,7 @@ export interface Passing {
   timestamp: number;
   enabled: number;
   source: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,4 +99,30 @@ export interface Team {
   description: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Import types
+
+export interface ImportParseResponse {
+  rows: string[][];
+  totalRows: number;
+}
+
+export interface ImportExecuteRequest {
+  mode: string;
+  startFromRow: number;
+  mapping: Record<string, string>;
+  rows: string[][];
+}
+
+export interface ImportExecuteResponse {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
+}
+
+export interface ImportFieldDef {
+  field: string;
+  label: string;
 }

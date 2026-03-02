@@ -24,6 +24,7 @@ interface PassingFormData {
   checkpoint: string;
   timestamp: number | '';
   enabled: number;
+  sortOrder: number;
   source: string;
 }
 
@@ -32,11 +33,12 @@ const schema = Joi.object<PassingFormData>({
   checkpoint: Joi.string().required().messages({ 'string.empty': 'Checkpoint is required' }),
   timestamp: Joi.number().greater(0).required().messages({ 'number.base': 'Timestamp is required', 'number.greater': 'Timestamp must be greater than 0' }),
   enabled: Joi.number().valid(0, 1).optional(),
+  sortOrder: Joi.number().integer().min(0).optional(),
   source: Joi.string().allow('').optional(),
 });
 
 const DEFAULT_VALUES: PassingFormData = {
-  card: '', checkpoint: '', timestamp: '', enabled: 1, source: 'manual',
+  card: '', checkpoint: '', timestamp: '', enabled: 1, sortOrder: 0, source: 'manual',
 };
 
 function formToPayload(data: PassingFormData) {
@@ -68,7 +70,8 @@ export function PassingDialog({ open, onClose, onSaved, eventId, passing }: Pass
     if (open) {
       reset(passing ? {
         card: passing.card, checkpoint: passing.checkpoint,
-        timestamp: passing.timestamp || '', enabled: passing.enabled, source: passing.source,
+        timestamp: passing.timestamp || '', enabled: passing.enabled,
+        sortOrder: passing.sortOrder, source: passing.source,
       } : DEFAULT_VALUES);
       setError(null);
     }
@@ -124,7 +127,12 @@ export function PassingDialog({ open, onClose, onSaved, eventId, passing }: Pass
                 <TextField {...field} label="Source" fullWidth size="small" disabled={saving} />
               )} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <Controller name="sortOrder" control={control} render={({ field }) => (
+                <TextField {...field} label="Sort #" fullWidth size="small" type="number" disabled={saving} />
+              )} />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Controller name="enabled" control={control} render={({ field }) => (
                 <FormControlLabel control={<Checkbox checked={field.value === 1} onChange={(_, checked) => field.onChange(checked ? 1 : 0)} size="small" disabled={saving} />} label="Enabled" />
               )} />

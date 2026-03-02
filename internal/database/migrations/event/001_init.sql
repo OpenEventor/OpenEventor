@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS passings (
     timestamp REAL NOT NULL DEFAULT 0,
     enabled INTEGER DEFAULT 1,
     source TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

@@ -11,6 +11,7 @@ interface SSEMessage {
 interface UseEventSSEOptions {
   eventId: string;
   onMessage: (msg: SSEMessage) => void;
+  onReconnect?: () => void;
   enabled?: boolean;
 }
 
@@ -23,9 +24,11 @@ const HEARTBEAT_TIMEOUT_MS = 10_000;
  * Auto-reconnects with exponential backoff on disconnect.
  * Uses heartbeat timeout to detect dead connections (server pings every 15s).
  */
-export function useEventSSE({ eventId, onMessage, enabled = true }: UseEventSSEOptions) {
+export function useEventSSE({ eventId, onMessage, onReconnect, enabled = true }: UseEventSSEOptions) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const onReconnectRef = useRef(onReconnect);
+  onReconnectRef.current = onReconnect;
 
   const [status, setStatus] = useState<SSEStatus>('connecting');
   const reconnectRef = useRef<(() => void) | null>(null);
@@ -41,6 +44,7 @@ export function useEventSSE({ eventId, onMessage, enabled = true }: UseEventSSEO
     let heartbeatTimeout: ReturnType<typeof setTimeout>;
     let retryDelay = 1000;
     let disposed = false;
+    let isFirstConnect = true;
 
     function resetHeartbeat() {
       clearTimeout(heartbeatTimeout);
@@ -82,6 +86,11 @@ export function useEventSSE({ eventId, onMessage, enabled = true }: UseEventSSEO
         retryDelay = 1000;
         setStatus('online');
         resetHeartbeat();
+        if (isFirstConnect) {
+          isFirstConnect = false;
+        } else {
+          onReconnectRef.current?.();
+        }
       };
 
       // Listen for named events: "passing", "competitor".

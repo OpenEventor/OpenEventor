@@ -50,7 +50,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  if (!headers.has('Content-Type') && options.body) {
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -100,6 +100,9 @@ export const api = {
 
   del: <T>(path: string): Promise<T> =>
     request<T>(path, { method: 'DELETE' }),
+
+  upload: <T>(path: string, formData: FormData): Promise<T> =>
+    request<T>(path, { method: 'POST', body: formData }),
 };
 
 export function getStoredToken(): string | null {

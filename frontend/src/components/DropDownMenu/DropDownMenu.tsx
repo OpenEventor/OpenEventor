@@ -198,7 +198,7 @@ const DropDownMenu: FC<DropDownMenuProps> = ({
           {currentMenu.items.map((item, index) => {
             if (item.Component) {
               return (
-                <Box key={`component-${index}`} sx={{ mx: 0.4 }}>
+                <Box key={`component-${index}`}>
                   {item.Component}
                 </Box>
               );

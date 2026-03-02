@@ -30,6 +30,7 @@ const COLUMNS: GridColDef[] = [
     valueFormatter: (value: number) => value ? value.toFixed(2) : '—',
   },
   { field: 'enabled', headerName: 'Enabled', width: 80, type: 'boolean' },
+  { field: 'sortOrder', headerName: '#', width: 60, type: 'number' },
   { field: 'source', headerName: 'Source', width: 120 },
 ];
 

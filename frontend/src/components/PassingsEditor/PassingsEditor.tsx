@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import {
   Box,
   Button,
@@ -6,27 +6,31 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   Slider,
   Stack,
+  Switch,
   TextField,
   Typography,
   useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
-import TimeInput from "../../../components/TimeInput";
+import SettingsIcon from "@mui/icons-material/Settings";
+import TimeInput from "../TimeInput";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
-import type { Passing } from "../../../api/types";
-import { api } from "../../../api/client";
-import { renderLock, pauseRefresh } from "./useMonitorStore";
+import type { Passing } from "../../api/types";
+import { api } from "../../api/client";
+import DropDownMenu from "../DropDownMenu/DropDownMenu";
+import type { DropDownMenuConfig } from "../DropDownMenu/types";
 
 // ── Types ───────────────────────────────────────────────────────────
 
 type InitialMode = "edit" | "add-before" | "add-after";
 
-interface PassingsEditorProps {
+export interface PassingsEditorProps {
   open: boolean;
   onClose: () => void;
   eventId: string;
@@ -34,6 +38,14 @@ interface PassingsEditorProps {
   passings: Passing[];
   initialIndex: number;
   initialMode: InitialMode;
+  /** Called when editor opens (e.g., renderLock.lock() in Monitor). */
+  onEditorOpen?: () => void;
+  /** Called when editor closes (e.g., renderLock.unlock() in Monitor). */
+  onEditorClose?: () => void;
+  /** Called after successful save. */
+  onAfterSave?: () => void;
+  /** Optional header content rendered above passings list. */
+  headerContent?: ReactNode;
 }
 
 interface WorkingPassing {
@@ -41,6 +53,7 @@ interface WorkingPassing {
   checkpoint: string;
   timestamp: number;
   enabled: number;
+  sortOrder: number;
   isNew: boolean;
   isDirty: boolean;
   original?: Passing;
@@ -96,6 +109,7 @@ function buildWorkingList(passings: Passing[]): WorkingPassing[] {
     checkpoint: p.checkpoint,
     timestamp: p.timestamp,
     enabled: p.enabled,
+    sortOrder: p.sortOrder,
     isNew: false,
     isDirty: false,
     original: p,
@@ -109,6 +123,7 @@ function createNewPassing(): WorkingPassing {
     checkpoint: "",
     timestamp: 0,
     enabled: 1,
+    sortOrder: 0,
     isNew: true,
     isDirty: false,
   };
@@ -120,6 +135,7 @@ function applyFormToItem(
   formCheckpoint: string,
   formTime: string,
   formEnabled: boolean,
+  formSortOrder: number,
   fallbackRefTs: number,
 ): WorkingPassing {
   const result = { ...item };
@@ -131,11 +147,13 @@ function applyFormToItem(
     result.timestamp = timeUnchanged ? result.original.timestamp : parsed;
   }
   result.enabled = formEnabled ? 1 : 0;
+  result.sortOrder = formSortOrder;
   if (!result.isNew && result.original) {
     result.isDirty =
       result.checkpoint !== result.original.checkpoint ||
       result.timestamp !== result.original.timestamp ||
-      result.enabled !== result.original.enabled;
+      result.enabled !== result.original.enabled ||
+      result.sortOrder !== result.original.sortOrder;
   }
   return result;
 }
@@ -249,13 +267,18 @@ function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }:
           </IconButton>
         )}
         <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-          {item.checkpoint || "—"}
+          {item.checkpoint || "\u2014"}
         </Typography>
+        {item.sortOrder !== 0 && (
+          <Typography variant="caption" sx={{ position: "absolute", top: 2, right: 4, fontSize: "0.55rem", lineHeight: 1, opacity: 0.5 }}>
+            #{item.sortOrder}
+          </Typography>
+        )}
         <Typography
           variant="caption"
           sx={{ fontFamily: "monospace", lineHeight: 1.2, opacity: 0.9 }}
         >
-          {hasTime ? formatTime(item.timestamp) : "—"}
+          {hasTime ? formatTime(item.timestamp) : "\u2014"}
         </Typography>
         {delta !== null && (
           <Typography
@@ -311,6 +334,10 @@ export default function PassingsEditor({
   passings,
   initialIndex,
   initialMode,
+  onEditorOpen,
+  onEditorClose,
+  onAfterSave,
+  headerContent,
 }: PassingsEditorProps) {
   const theme = useTheme();
   const expandedRef = useRef<HTMLDivElement>(null);
@@ -324,8 +351,11 @@ export default function PassingsEditor({
   const [checkpoint, setCheckpoint] = useState("");
   const [time, setTime] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [sortOrder, setSortOrder] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editOrder, setEditOrder] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
 
   // Initialize on open.
   useEffect(() => {
@@ -352,23 +382,26 @@ export default function PassingsEditor({
       setCheckpoint("");
       setTime("");
       setEnabled(true);
+      setSortOrder(0);
     } else {
       setCheckpoint(item.checkpoint);
       setTime(formatTime(item.timestamp));
       setEnabled(item.enabled === 1);
+      setSortOrder(item.sortOrder);
     }
     setError(null);
     setSaving(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Render lock while open.
+  // Editor open/close callbacks.
   useEffect(() => {
     if (!open) return;
-    renderLock.lock();
+    onEditorOpen?.();
     return () => {
-      renderLock.unlock();
+      onEditorClose?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Auto-scroll to expanded row.
@@ -385,10 +418,10 @@ export default function PassingsEditor({
     setWorkingList((prev) => {
       const copy = [...prev];
       const fallbackRefTs = prev.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
-      copy[expandedIdx] = applyFormToItem(copy[expandedIdx], checkpoint, time, enabled, fallbackRefTs);
+      copy[expandedIdx] = applyFormToItem(copy[expandedIdx], checkpoint, time, enabled, sortOrder, fallbackRefTs);
       return copy;
     });
-  }, [expandedIdx, checkpoint, time, enabled]);
+  }, [expandedIdx, checkpoint, time, enabled, sortOrder]);
 
   // Collapse expanded row (click on empty space).
   const handleCollapse = useCallback(() => {
@@ -398,6 +431,14 @@ export default function PassingsEditor({
       setTimeout(() => setShrinkingIdx(null), 250);
     }
     setExpandedIdx(null);
+    // Re-sort by [sortOrder ASC, timestamp ASC] after collapsing.
+    setWorkingList((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.timestamp - b.timestamp;
+      });
+      return sorted;
+    });
   }, [flushCurrentEdit, expandedIdx]);
 
   // Switch to a different row.
@@ -417,6 +458,7 @@ export default function PassingsEditor({
         setTime("");
       }
       setEnabled(item.enabled === 1);
+      setSortOrder(item.sortOrder);
       setError(null);
       setExpandedIdx(idx);
     },
@@ -436,6 +478,7 @@ export default function PassingsEditor({
       setCheckpoint("");
       setTime("");
       setEnabled(true);
+      setSortOrder(0);
       setError(null);
       setExpandedIdx(insertIdx);
     },
@@ -530,7 +573,7 @@ export default function PassingsEditor({
     const latestList = [...workingList];
     if (expandedIdx !== null) {
       const fallbackRefTs = latestList.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
-      latestList[expandedIdx] = applyFormToItem(latestList[expandedIdx], checkpoint, time, enabled, fallbackRefTs);
+      latestList[expandedIdx] = applyFormToItem(latestList[expandedIdx], checkpoint, time, enabled, sortOrder, fallbackRefTs);
     }
 
     // Collect changes.
@@ -562,6 +605,7 @@ export default function PassingsEditor({
           checkpoint: item.checkpoint.trim(),
           timestamp: item.timestamp,
           enabled: item.enabled,
+          sortOrder: item.sortOrder,
           source: "manual",
         };
         return item.isNew
@@ -569,14 +613,14 @@ export default function PassingsEditor({
           : api.put(`/api/events/${eventId}/passings/${item.id}`, payload);
       });
       await Promise.all(promises);
-      pauseRefresh.request();
+      onAfterSave?.();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
-  }, [flushCurrentEdit, workingList, expandedIdx, checkpoint, time, enabled, card, eventId, onClose]);
+  }, [flushCurrentEdit, workingList, expandedIdx, checkpoint, time, enabled, sortOrder, card, eventId, onClose, onAfterSave]);
 
   // Colors for expanded row.
   const expandedBg = enabled
@@ -588,6 +632,27 @@ export default function PassingsEditor({
     ? theme.palette.primary.contrastText
     : theme.palette.text.secondary;
 
+  const settingsMenu: DropDownMenuConfig = {
+    items: [
+      {
+        Component: (
+          <FormControlLabel
+            labelPlacement="start"
+            control={
+              <Switch
+                size="small"
+                checked={editOrder}
+                onChange={(_, checked) => setEditOrder(checked)}
+              />
+            }
+            label={<Typography variant="body2" sx={{ fontSize: "0.85rem" }}>Edit order</Typography>}
+            sx={{ mx: 0, width: "100%", justifyContent: "space-between" }}
+          />
+        ),
+      },
+    ],
+  };
+
   return (
     <Dialog
       open={open}
@@ -595,9 +660,21 @@ export default function PassingsEditor({
       fullWidth
       PaperProps={{ sx: { height: "75vh", display: "flex", flexDirection: "column" } }}
     >
-      <DialogTitle sx={{ borderBottom: 1, borderColor: "divider", py: 1.5 }}>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
         Edit mode
+        <IconButton size="small" onClick={(e) => setSettingsAnchor(e.currentTarget)}>
+          <SettingsIcon fontSize="small" />
+        </IconButton>
       </DialogTitle>
+      <DropDownMenu
+        open={Boolean(settingsAnchor)}
+        onClose={() => setSettingsAnchor(null)}
+        menu={settingsMenu}
+        anchorEl={settingsAnchor}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        width={180}
+      />
       <DialogContent
         onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }}
         sx={{
@@ -612,6 +689,12 @@ export default function PassingsEditor({
         }}
       >
         <Box sx={{ my: "auto", display: "flex", flexDirection: "column", gap: 0.5 }}>
+        {/* Header content (e.g. ParticipantHeader in Monitor) */}
+        {headerContent && (
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 0.5 }}>
+            {headerContent}
+          </Box>
+        )}
         {/* Top insertion divider */}
         <InsertionDivider onClick={() => handleInsert(0)} />
 
@@ -622,7 +705,7 @@ export default function PassingsEditor({
               <Box ref={expandedRef} onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }} sx={{ display: "flex", justifyContent: "center" }}>
                 <Stack
                   sx={{
-                    width: 210,
+                    width: 230,
                     minHeight: 100,
                     px: 1.5,
                     py: 1,
@@ -674,8 +757,34 @@ export default function PassingsEditor({
                     </IconButton>
                   </Stack>
 
-                  {/* Time + slider */}
-                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 1, mt: 0.5 }}>
+                  {/* Sort order + Time + slider */}
+                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 0.5, mt: 0.5 }}>
+                    {editOrder && (
+                    <TextField
+                      value={sortOrder === 0 ? "" : sortOrder}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setSortOrder(Number.isNaN(val) ? 0 : val);
+                      }}
+                      placeholder="#"
+                      variant="outlined"
+                      size="small"
+                      disabled={saving}
+                      sx={{
+                        width: 38,
+                        flexShrink: 0,
+                        "& .MuiOutlinedInput-root": {
+                          color: expandedText,
+                          fontSize: "0.75rem",
+                          opacity: 0.7,
+                          "& fieldset": { borderColor: "rgba(255,255,255,0.2)" },
+                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.4)" },
+                          "&.Mui-focused fieldset": { borderColor: expandedText },
+                        },
+                        "& .MuiOutlinedInput-input": { px: 0.5, py: 0.75, textAlign: "center" },
+                      }}
+                    />
+                    )}
                     <TimeInput
                       value={time}
                       onChange={setTime}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar as MuiAppBar,
@@ -7,12 +7,9 @@ import {
   IconButton,
   Tooltip,
   Box,
-  Radio,
-  Switch,
   TextField,
   InputAdornment,
   ButtonBase,
-  Stack,
   Divider,
   useMediaQuery,
   useTheme,
@@ -40,7 +37,11 @@ import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
 import DropDownMenu from "../DropDownMenu/DropDownMenu.tsx";
+import DropDownMenuRadioGroup from "../DropDownMenu/DropDownMenuRadioGroup.tsx";
+import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher.tsx";
 import type { DropDownMenuConfig } from "../DropDownMenu/types.ts";
+import { api } from "../../api/client.ts";
+import type { EventItem } from "../../api/types.ts";
 import logoSvg from "../../assets/logo.svg";
 
 export const EVENT_TABS = [
@@ -60,66 +61,42 @@ interface AppBarProps {
   withSearch?: boolean;
 }
 
-function ThemeRadio({
-  themeValue,
-  icon,
-  label,
-}: {
-  themeValue: "light" | "dark" | "system";
-  icon: React.ReactNode;
-  label: string;
-}) {
+const THEME_OPTIONS = [
+  { value: "light", label: "Light", icon: <LightModeIcon sx={{ fontSize: 16 }} /> },
+  { value: "dark", label: "Dark", icon: <DarkModeIcon sx={{ fontSize: 16 }} /> },
+  { value: "system", label: "Auto", icon: <AutoModeIcon sx={{ fontSize: 16 }} /> },
+];
+
+function ThemeModeRadioGroup() {
   const { mode, setMode } = useThemeMode();
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1}
-      onClick={() => setMode(themeValue)}
-      sx={{ cursor: "pointer", py: 0.25 }}
-    >
-      {icon}
-      <Typography variant="body2" sx={{ flex: 1, fontSize: "0.85rem" }}>
-        {label}
-      </Typography>
-      <Radio size="small" checked={mode === themeValue} sx={{ p: 0 }} />
-    </Stack>
+    <DropDownMenuRadioGroup
+      options={THEME_OPTIONS}
+      value={mode}
+      onChange={(val) => setMode(val as "light" | "dark" | "system")}
+    />
   );
 }
 
 function HighContrastSwitch() {
   const { highContrast, setHighContrast } = useThemeMode();
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1}
-      onClick={() => setHighContrast(!highContrast)}
-      sx={{ cursor: "pointer", py: 0.25 }}
-    >
-      <Typography variant="body2" sx={{ flex: 1, fontSize: "0.85rem" }}>
-        High contrast
-      </Typography>
-      <Switch size="small" checked={highContrast} />
-    </Stack>
+    <DropDownMenuSwitcher
+      text="High contrast"
+      checked={highContrast}
+      onChange={setHighContrast}
+    />
   );
 }
 
 function CompactViewSwitch() {
   const { compactView, setCompactView } = useThemeMode();
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1}
-      onClick={() => setCompactView(!compactView)}
-      sx={{ cursor: "pointer", py: 0.25 }}
-    >
-      <Typography variant="body2" sx={{ flex: 1, fontSize: "0.85rem" }}>
-        Compact view
-      </Typography>
-      <Switch size="small" checked={compactView} />
-    </Stack>
+    <DropDownMenuSwitcher
+      text="Compact view"
+      checked={compactView}
+      onChange={setCompactView}
+    />
   );
 }
 
@@ -132,9 +109,15 @@ export function AppBar({ withSearch = false }: AppBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  const [event, setEvent] = useState<EventItem | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+
+  useEffect(() => {
+    if (!eventId) { setEvent(null); return; }
+    api.get<EventItem>(`/api/events/${eventId}`).then(setEvent).catch(() => setEvent(null));
+  }, [eventId]);
 
   const handleSettingsClose = () => setSettingsAnchor(null);
   const handleMoreClose = () => setMoreAnchor(null);
@@ -208,31 +191,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             title: "Setup theme",
             items: [
               {
-                Component: (
-                  <ThemeRadio
-                    themeValue="light"
-                    icon={<LightModeIcon sx={{ fontSize: 16 }} />}
-                    label="Light"
-                  />
-                ),
-              },
-              {
-                Component: (
-                  <ThemeRadio
-                    themeValue="dark"
-                    icon={<DarkModeIcon sx={{ fontSize: 16 }} />}
-                    label="Dark"
-                  />
-                ),
-              },
-              {
-                Component: (
-                  <ThemeRadio
-                    themeValue="system"
-                    icon={<AutoModeIcon sx={{ fontSize: 16 }} />}
-                    label="Auto"
-                  />
-                ),
+                Component: <ThemeModeRadioGroup />,
               },
               {
                 Component: <HighContrastSwitch />,
@@ -291,18 +250,21 @@ export function AppBar({ withSearch = false }: AppBarProps) {
 
           {/* App name or event name */}
           {eventId ? (
-            <Tooltip title="Event name (date)" arrow>
+            <Tooltip
+              title={event ? `${event.displayName}${event.date ? ` (${event.date})` : ""}` : ""}
+              arrow
+            >
               <Typography
                 variant="subtitle1"
                 noWrap
                 sx={{
-                  maxWidth: 200,
+                  maxWidth: 300,
                   cursor: "pointer",
                   fontWeight: 500,
                 }}
                 onClick={() => navigate(`/events/${eventId}/competitors`)}
               >
-                Event
+                {event?.displayName || "Event"}
               </Typography>
             </Tooltip>
           ) : (

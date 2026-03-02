@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -47,8 +49,8 @@ func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(
-		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to prepare statement"})
@@ -96,6 +98,9 @@ func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 }
 
 // ListPassings returns all passings for an event (user JWT auth).
+// Optional query params:
+//   - ?updated_after=<ISO8601> — returns only passings with updated_at >= value.
+//   - ?card=<value> — filter by card (repeatable, e.g. ?card=123&card=456).
 func (h *Handler) ListPassings(c *fiber.Ctx) error {
 	eventID := c.Params("eventId")
 
@@ -104,10 +109,34 @@ func (h *Handler) ListPassings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to open event database"})
 	}
 
-	rows, err := db.Query(
-		`SELECT id, card, checkpoint, timestamp, enabled, source, created_at, updated_at
-		 FROM passings ORDER BY timestamp DESC`,
-	)
+	updatedAfter := c.Query("updated_after")
+	cards := c.Context().QueryArgs().PeekMulti("card")
+
+	query := `SELECT id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at FROM passings`
+	var conditions []string
+	var args []interface{}
+
+	if updatedAfter != "" {
+		conditions = append(conditions, "updated_at >= ?")
+		args = append(args, updatedAfter)
+	}
+
+	if len(cards) > 0 {
+		placeholders := make([]string, len(cards))
+		for i, card := range cards {
+			placeholders[i] = "?"
+			args = append(args, string(card))
+		}
+		conditions = append(conditions, "card IN ("+strings.Join(placeholders, ",")+")")
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += " ORDER BY sort_order ASC, timestamp ASC"
+
+	var rows *sql.Rows
+	rows, err = db.Query(query, args...)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "database error"})
 	}
@@ -118,7 +147,7 @@ func (h *Handler) ListPassings(c *fiber.Ctx) error {
 		var p models.Passing
 		if err := rows.Scan(
 			&p.ID, &p.Card, &p.Checkpoint, &p.Timestamp, &p.Enabled, &p.Source,
-			&p.CreatedAt, &p.UpdatedAt,
+			&p.SortOrder, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "scan error"})
 		}
@@ -134,6 +163,7 @@ type passingRequest struct {
 	Timestamp  float64 `json:"timestamp"`
 	Enabled    int     `json:"enabled"`
 	Source     string  `json:"source"`
+	SortOrder  int     `json:"sortOrder"`
 }
 
 // CreatePassing creates a single passing manually (user JWT auth).
@@ -167,9 +197,9 @@ func (h *Handler) CreatePassing(c *fiber.Ctx) error {
 	}
 
 	_, err = db.Exec(
-		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, now, now,
+		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now, now,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create passing"})
@@ -178,7 +208,7 @@ func (h *Handler) CreatePassing(c *fiber.Ctx) error {
 	passing := models.Passing{
 		ID: id, Card: req.Card, Checkpoint: req.Checkpoint,
 		Timestamp: req.Timestamp, Enabled: req.Enabled, Source: req.Source,
-		CreatedAt: now, UpdatedAt: now,
+		SortOrder: req.SortOrder, CreatedAt: now, UpdatedAt: now,
 	}
 
 	h.SSE.Broadcast(eventID, sse.Message{
@@ -216,9 +246,9 @@ func (h *Handler) UpdatePassing(c *fiber.Ctx) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	result, err := db.Exec(
-		`UPDATE passings SET card = ?, checkpoint = ?, timestamp = ?, enabled = ?, source = ?, updated_at = ?
+		`UPDATE passings SET card = ?, checkpoint = ?, timestamp = ?, enabled = ?, source = ?, sort_order = ?, updated_at = ?
 		WHERE id = ?`,
-		req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, now,
+		req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now,
 		passingID,
 	)
 	if err != nil {
@@ -236,7 +266,7 @@ func (h *Handler) UpdatePassing(c *fiber.Ctx) error {
 	passing := models.Passing{
 		ID: passingID, Card: req.Card, Checkpoint: req.Checkpoint,
 		Timestamp: req.Timestamp, Enabled: req.Enabled, Source: req.Source,
-		CreatedAt: createdAt, UpdatedAt: now,
+		SortOrder: req.SortOrder, CreatedAt: createdAt, UpdatedAt: now,
 	}
 
 	h.SSE.Broadcast(eventID, sse.Message{

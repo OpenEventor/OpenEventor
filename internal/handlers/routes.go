@@ -64,6 +64,10 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	event.Put("/competitors/:competitorId", h.UpdateCompetitor)
 	event.Delete("/competitors/:competitorId", h.DeleteCompetitor)
 
+	// Import
+	event.Post("/import/parse", h.ParseImportFile)
+	event.Post("/import/execute", h.ExecuteImport)
+
 	// Courses
 	event.Get("/courses", h.ListCourses)
 	event.Post("/courses", h.CreateCourse)

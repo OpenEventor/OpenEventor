@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Loki from 'lokijs';
-import type { Passing, Competitor } from '../../../api/types';
+import type { Passing, Competitor, Course, Group } from '../../../api/types';
 
 /** Subset of competitor fields relevant to the monitor. */
 export interface MonitorCompetitor {
@@ -12,6 +12,10 @@ export interface MonitorCompetitor {
   lastName: string;
   groupId: string;
   courseId: string;
+  startTime: string;
+  dsq: number;
+  dnf: number;
+  dns: number;
 }
 
 /** A group of passings belonging to one participant (matched via card). */
@@ -21,6 +25,8 @@ export interface ParticipantGroup {
   cards: string[];
   passings: Passing[];          // sorted by timestamp ASC
   latestTimestamp: number;      // for sorting groups DESC
+  courseName: string;           // resolved from courseNames map
+  groupName: string;            // resolved from groupNames map
 }
 
 // ── SSE payload types ──────────────────────────────────────────────
@@ -94,6 +100,8 @@ interface StoreRef {
   db: Loki;
   passings: Loki.Collection<Passing>;
   competitors: Loki.Collection<MonitorCompetitor>;
+  courseNames: Map<string, string>;
+  groupNames: Map<string, string>;
 }
 
 function createDB(): StoreRef {
@@ -106,7 +114,7 @@ function createDB(): StoreRef {
     unique: ['id'],
     indices: ['card1', 'card2', 'bib', 'courseId', 'groupId'],
   });
-  return { db, passings, competitors };
+  return { db, passings, competitors, courseNames: new Map(), groupNames: new Map() };
 }
 
 function findCompetitorByCard(store: StoreRef, card: string): MonitorCompetitor | null {
@@ -115,7 +123,7 @@ function findCompetitorByCard(store: StoreRef, card: string): MonitorCompetitor 
 
 /** Build the sorted ParticipantGroup array from the current LokiJS state. */
 function buildGroups(store: StoreRef): ParticipantGroup[] {
-  const allPassings = store.passings.chain().simplesort('timestamp').data();
+  const allPassings = store.passings.chain().compoundsort([['sortOrder', false], ['timestamp', false]]).data();
 
   // Group passings by resolved competitor (or raw card if orphan).
   const groupMap = new Map<string, { competitor: MonitorCompetitor | null; cards: Set<string>; passings: Passing[]; latest: number }>();
@@ -149,8 +157,10 @@ function buildGroups(store: StoreRef): ParticipantGroup[] {
       key,
       competitor: g.competitor,
       cards: [...g.cards],
-      passings: g.passings, // already sorted by timestamp ASC from chain()
+      passings: g.passings, // already sorted by sortOrder ASC, timestamp ASC from chain()
       latestTimestamp: g.latest,
+      courseName: g.competitor?.courseId ? (store.courseNames.get(g.competitor.courseId) ?? '') : '',
+      groupName: g.competitor?.groupId ? (store.groupNames.get(g.competitor.groupId) ?? '') : '',
     });
   }
 
@@ -196,6 +206,10 @@ export function useMonitorStore() {
           lastName: c.lastName,
           groupId: c.groupId,
           courseId: c.courseId,
+          startTime: c.startTime,
+          dsq: c.dsq,
+          dnf: c.dnf,
+          dns: c.dns,
         });
       }
       bump();
@@ -256,10 +270,72 @@ export function useMonitorStore() {
     [store],
   );
 
+  /** Merge incremental data from REST (upserts, does not clear). */
+  const mergeIncremental = useCallback(
+    (passings: Passing[], competitors: Competitor[]) => {
+      for (const p of passings) {
+        const existing = store.passings.findOne({ id: p.id } as LokiQuery<Passing>);
+        if (existing) {
+          Object.assign(existing, p);
+          store.passings.update(existing);
+        } else {
+          store.passings.insert(p);
+        }
+      }
+      for (const c of competitors) {
+        const mapped: MonitorCompetitor = {
+          id: c.id,
+          card1: c.card1,
+          card2: c.card2,
+          bib: c.bib,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          groupId: c.groupId,
+          courseId: c.courseId,
+          startTime: c.startTime,
+          dsq: c.dsq,
+          dnf: c.dnf,
+          dns: c.dns,
+        };
+        const existing = store.competitors.findOne({ id: c.id } as LokiQuery<MonitorCompetitor>);
+        if (existing) {
+          Object.assign(existing, mapped);
+          store.competitors.update(existing);
+        } else {
+          store.competitors.insert(mapped);
+        }
+      }
+      bump();
+    },
+    [store, bump],
+  );
+
+  /** Load course/group name lookup maps (called once on init and on full reload). */
+  const loadLookups = useCallback(
+    (courses: Course[], groups: Group[]) => {
+      store.courseNames.clear();
+      for (const c of courses) store.courseNames.set(c.id, c.name);
+      store.groupNames.clear();
+      for (const g of groups) store.groupNames.set(g.id, g.name);
+    },
+    [store],
+  );
+
   /** Get the current grouped view. Recomputed on every call (driven by version). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const groups = buildGroups(store);
   void version; // Used to trigger re-computation when version changes.
 
-  return { groups, loadInitial, applySSE, bump };
+  // Compute stats from LokiJS collections.
+  const totalPassings = store.passings.count();
+  const activePassings = store.passings.find({ enabled: 1 } as LokiQuery<Passing>).length;
+  const stats = {
+    totalPassings,
+    activePassings,
+    disabledPassings: totalPassings - activePassings,
+    competitors: store.competitors.count(),
+    withTroubles: 0, // TODO: implement trouble detection
+  };
+
+  return { groups, stats, loadInitial, mergeIncremental, loadLookups, applySSE, bump };
 }

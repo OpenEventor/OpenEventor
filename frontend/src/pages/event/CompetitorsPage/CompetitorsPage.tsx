@@ -35,6 +35,8 @@ import { ColumnSettingsPanel } from '../../../components/ColumnSettingsPanel/Col
 import { api } from '../../../api/client.ts';
 import type { Competitor } from '../../../api/types.ts';
 import { CompetitorDialog } from './CompetitorDialog.tsx';
+import ImportWizard from '../../../features/ImportWizard/ImportWizard.tsx';
+import { COMPETITOR_FIELDS } from '../../../features/ImportWizard/fieldDefinitions.ts';
 
 const COLUMN_DEFS: ColumnDef[] = [
   { field: 'bib', label: 'Bib' },
@@ -128,8 +130,11 @@ export function CompetitorsPage() {
   const [rowMenuCompetitorId, setRowMenuCompetitorId] = useState<string | null>(null);
 
   // Competitor dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCompetitor, setEditingCompetitor] = useState<Competitor | null>(null);
+  const [dialogMode, setDialogMode] = useState<'view' | 'edit' | 'create' | null>(null);
+  const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
+
+  // Import wizard state
+  const [importOpen, setImportOpen] = useState(false);
 
   // Actions column (not managed by column settings)
   const actionsColumn: GridColDef = useMemo(() => ({
@@ -206,7 +211,7 @@ export function CompetitorsPage() {
         {
           icon: <FileUploadIcon />,
           text: 'Import',
-          action: () => {},
+          action: () => setImportOpen(true),
         },
         {
           icon: <FileDownloadIcon />,
@@ -232,8 +237,8 @@ export function CompetitorsPage() {
   const handleEdit = () => {
     const comp = competitors.find((c) => c.id === rowMenuCompetitorId);
     if (comp) {
-      setEditingCompetitor(comp);
-      setDialogOpen(true);
+      setSelectedCompetitor(comp);
+      setDialogMode('edit');
     }
     handleRowMenuClose();
   };
@@ -249,15 +254,19 @@ export function CompetitorsPage() {
     }
   };
 
+  const handleDialogClose = () => {
+    setDialogMode(null);
+    setSelectedCompetitor(null);
+  };
+
   const handleDialogSaved = () => {
-    setDialogOpen(false);
-    setEditingCompetitor(null);
+    handleDialogClose();
     fetchCompetitors();
   };
 
   const handleAddNew = () => {
-    setEditingCompetitor(null);
-    setDialogOpen(true);
+    setSelectedCompetitor(null);
+    setDialogMode('create');
   };
 
   const menuCompetitor = competitors.find((c) => c.id === rowMenuCompetitorId);
@@ -432,13 +441,26 @@ export function CompetitorsPage() {
         width={220}
       />
 
-      {/* Competitor create/edit dialog */}
+      {/* Competitor view/edit/create dialog */}
       <CompetitorDialog
-        open={dialogOpen}
-        onClose={() => { setDialogOpen(false); setEditingCompetitor(null); }}
+        open={dialogMode !== null}
+        mode={dialogMode ?? 'view'}
+        onClose={handleDialogClose}
         onSaved={handleDialogSaved}
+        onEditClick={() => setDialogMode('edit')}
         eventId={eventId || ''}
-        competitor={editingCompetitor}
+        competitor={selectedCompetitor}
+      />
+
+      {/* Import wizard */}
+      <ImportWizard
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onComplete={fetchCompetitors}
+        entityName="competitors"
+        fields={COMPETITOR_FIELDS}
+        parseUrl={`/api/events/${eventId}/import/parse`}
+        importUrl={`/api/events/${eventId}/import/execute`}
       />
 
       {/* DataGrid */}
@@ -452,11 +474,15 @@ export function CompetitorsPage() {
           disableRowSelectionOnClick
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={setSelectionModel}
+          onRowClick={(params) => {
+            setSelectedCompetitor(params.row as Competitor);
+            setDialogMode('view');
+          }}
           initialState={{
             pagination: { paginationModel: { pageSize: 25 } },
           }}
           pageSizeOptions={[25, 50, 100]}
-          sx={{ height: '100%' }}
+          sx={{ height: '100%', cursor: 'pointer' }}
         />
       </Box>
     </Box>

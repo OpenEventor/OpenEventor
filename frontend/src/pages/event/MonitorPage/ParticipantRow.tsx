@@ -1,13 +1,15 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 import { Box, ButtonBase } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { ParticipantGroup } from './useMonitorStore';
+import { renderLock, pauseRefresh } from './useMonitorStore';
+import { useMonitorContext } from './MonitorContext';
 import ParticipantHeader from './ParticipantHeader';
+import { computeDeltas } from '../../../components/PassingBlock/PassingBlock';
 import PassingBlock from './PassingBlock';
-import GapIndicator from './GapIndicator';
-import PassingsEditor from './PassingsEditor';
+import GapIndicator from '../../../components/GapIndicator/GapIndicator';
+import PassingsEditor from '../../../components/PassingsEditor/PassingsEditor';
 
 const BTN_WIDTH = 24;
 
@@ -17,7 +19,7 @@ interface ParticipantRowProps {
 }
 
 export default function ParticipantRow({ group, height }: ParticipantRowProps) {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId } = useMonitorContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
   const [dialogState, setDialogState] = useState<{
@@ -46,20 +48,7 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
     scrollRef.current?.scrollBy({ left: dir * 100, behavior: 'smooth' });
   }, []);
 
-  // Compute deltas: time difference from previous enabled passing.
-  const deltas: (number | null)[] = [];
-  let prevEnabledTimestamp: number | null = null;
-
-  for (const p of group.passings) {
-    if (p.enabled === 1 && prevEnabledTimestamp !== null) {
-      deltas.push(p.timestamp - prevEnabledTimestamp);
-    } else {
-      deltas.push(null);
-    }
-    if (p.enabled === 1) {
-      prevEnabledTimestamp = p.timestamp;
-    }
-  }
+  const deltas = computeDeltas(group.passings);
 
   const btnSx = {
     width: BTN_WIDTH,
@@ -82,7 +71,12 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
         overflow: 'hidden',
       }}
     >
-      <ParticipantHeader competitor={group.competitor} cards={group.cards} />
+      <ParticipantHeader
+        competitor={group.competitor}
+        cards={group.cards}
+        courseName={group.courseName}
+        groupName={group.groupName}
+      />
 
       {overflows ? (
         <ButtonBase onClick={() => scroll(-1)} sx={btnSx}>
@@ -126,7 +120,7 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
         <Box sx={{ width: BTN_WIDTH, minWidth: BTN_WIDTH }} />
       )}
 
-      {dialogState && eventId && (
+      {dialogState && (
         <PassingsEditor
           open
           onClose={() => setDialogState(null)}
@@ -135,6 +129,19 @@ export default function ParticipantRow({ group, height }: ParticipantRowProps) {
           passings={group.passings}
           initialIndex={dialogState.index}
           initialMode={dialogState.mode}
+          onEditorOpen={() => renderLock.lock()}
+          onEditorClose={() => renderLock.unlock()}
+          onAfterSave={() => pauseRefresh.request()}
+          headerContent={
+            <Box sx={{ height: 56, display: 'flex', borderRadius: 1, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
+              <ParticipantHeader
+                competitor={group.competitor}
+                cards={group.cards}
+                courseName={group.courseName}
+                groupName={group.groupName}
+              />
+            </Box>
+          }
         />
       )}
     </Box>

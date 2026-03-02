@@ -144,6 +144,7 @@ type Passing struct {
 	Timestamp  float64 `json:"timestamp" db:"timestamp"`
 	Enabled    int     `json:"enabled" db:"enabled"`
 	Source     string  `json:"source" db:"source"`
+	SortOrder  int     `json:"sortOrder" db:"sort_order"`
 	CreatedAt  string  `json:"createdAt" db:"created_at"`
 	UpdatedAt  string  `json:"updatedAt" db:"updated_at"`
 }
