@@ -6,11 +6,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   IconButton,
   Slider,
   Stack,
-  Switch,
   TextField,
   Typography,
   useTheme,
@@ -24,6 +22,7 @@ import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
 import type { Passing } from "../../api/types";
 import { api } from "../../api/client";
 import DropDownMenu from "../DropDownMenu/DropDownMenu";
+import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher";
 import type { DropDownMenuConfig } from "../DropDownMenu/types";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -79,28 +78,6 @@ function formatDelta(seconds: number): string {
   return m > 0 ? `${sign}${m}:${sFixed.padStart(4, "0")}` : `${sign}${sFixed}`;
 }
 
-function parseTime(timeStr: string, referenceTimestamp: number): number | null {
-  const match = timeStr.match(/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,2}))?$/);
-  if (!match) return null;
-
-  const hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const seconds = parseInt(match[3], 10);
-  const centiseconds = match[4] ? parseInt(match[4].padEnd(2, "0"), 10) : 0;
-
-  if (hours > 23 || minutes > 59 || seconds > 59 || centiseconds > 99)
-    return null;
-
-  const refDate = new Date(referenceTimestamp * 1000);
-  const dayStart =
-    Date.UTC(
-      refDate.getUTCFullYear(),
-      refDate.getUTCMonth(),
-      refDate.getUTCDate(),
-    ) / 1000;
-
-  return dayStart + hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
-}
 
 /** Build initial working list from passings snapshot. */
 function buildWorkingList(passings: Passing[]): WorkingPassing[] {
@@ -133,18 +110,15 @@ function createNewPassing(): WorkingPassing {
 function applyFormToItem(
   item: WorkingPassing,
   formCheckpoint: string,
-  formTime: string,
+  formTimestamp: number | null,
   formEnabled: boolean,
   formSortOrder: number,
-  fallbackRefTs: number,
+  _fallbackRefTs: number,
 ): WorkingPassing {
   const result = { ...item };
-  const refTs = item.timestamp > 0 ? item.timestamp : fallbackRefTs;
   result.checkpoint = formCheckpoint;
-  const parsed = parseTime(formTime, refTs);
-  if (parsed !== null) {
-    const timeUnchanged = result.original && formTime === formatTime(result.original.timestamp);
-    result.timestamp = timeUnchanged ? result.original.timestamp : parsed;
+  if (formTimestamp !== null) {
+    result.timestamp = formTimestamp;
   }
   result.enabled = formEnabled ? 1 : 0;
   result.sortOrder = formSortOrder;
@@ -349,7 +323,7 @@ export default function PassingsEditor({
 
   // Form state for the expanded row.
   const [checkpoint, setCheckpoint] = useState("");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState<number | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [sortOrder, setSortOrder] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -380,12 +354,12 @@ export default function PassingsEditor({
     const item = list[expandIdx];
     if (item.isNew) {
       setCheckpoint("");
-      setTime("");
+      setTime(null);
       setEnabled(true);
       setSortOrder(0);
     } else {
       setCheckpoint(item.checkpoint);
-      setTime(formatTime(item.timestamp));
+      setTime(item.timestamp > 0 ? item.timestamp : null);
       setEnabled(item.enabled === 1);
       setSortOrder(item.sortOrder);
     }
@@ -452,10 +426,10 @@ export default function PassingsEditor({
       const item = workingList[idx];
       if (item.timestamp > 0) {
         setCheckpoint(item.checkpoint);
-        setTime(formatTime(item.timestamp));
+        setTime(item.timestamp);
       } else {
         setCheckpoint(item.checkpoint || "");
-        setTime("");
+        setTime(null);
       }
       setEnabled(item.enabled === 1);
       setSortOrder(item.sortOrder);
@@ -476,7 +450,7 @@ export default function PassingsEditor({
         return copy;
       });
       setCheckpoint("");
-      setTime("");
+      setTime(null);
       setEnabled(true);
       setSortOrder(0);
       setError(null);
@@ -507,15 +481,10 @@ export default function PassingsEditor({
   // Build a live view of workingList that includes current form state for the expanded row.
   const liveList = workingList.map((item, idx) => {
     if (idx !== expandedIdx) return item;
-    const refTs =
-      item.timestamp > 0
-        ? item.timestamp
-        : workingList.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
-    const parsed = parseTime(time, refTs);
     return {
       ...item,
       checkpoint,
-      timestamp: parsed ?? item.timestamp,
+      timestamp: time ?? item.timestamp,
       enabled: enabled ? 1 : 0,
     };
   });
@@ -541,16 +510,24 @@ export default function PassingsEditor({
     }
   }
 
-  // Reference timestamp for parsing.
+  // Reference timestamp for baseDate derivation.
   const referenceTimestamp =
     expandedIdx !== null && workingList[expandedIdx]?.timestamp > 0
       ? workingList[expandedIdx].timestamp
       : (prevEnabledTs ?? nextEnabledTs ?? Date.now() / 1000);
 
-  const parsedTimestamp = time ? parseTime(time, referenceTimestamp) : null;
+  const passingBaseDate = (() => {
+    const d = new Date(referenceTimestamp * 1000);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
+
+  const parsedTimestamp = time;
 
   // Dynamic delta for expanded row.
-  const timeInvalid = time !== "" && parsedTimestamp === null;
+  const timeInvalid = false;
   const expandedDelta: number | "invalid" | null =
     prevEnabledTs !== null
       ? parsedTimestamp !== null
@@ -636,17 +613,10 @@ export default function PassingsEditor({
     items: [
       {
         Component: (
-          <FormControlLabel
-            labelPlacement="start"
-            control={
-              <Switch
-                size="small"
-                checked={editOrder}
-                onChange={(_, checked) => setEditOrder(checked)}
-              />
-            }
-            label={<Typography variant="body2" sx={{ fontSize: "0.85rem" }}>Edit order</Typography>}
-            sx={{ mx: 0, width: "100%", justifyContent: "space-between" }}
+          <DropDownMenuSwitcher
+            text="Edit order"
+            checked={editOrder}
+            onChange={setEditOrder}
           />
         ),
       },
@@ -705,7 +675,7 @@ export default function PassingsEditor({
               <Box ref={expandedRef} onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }} sx={{ display: "flex", justifyContent: "center" }}>
                 <Stack
                   sx={{
-                    width: 230,
+                    width: 265,
                     minHeight: 100,
                     px: 1.5,
                     py: 1,
@@ -719,46 +689,8 @@ export default function PassingsEditor({
                     animation: "expandIn 0.25s ease-out",
                   }}
                 >
-                  {/* Checkpoint + enabled toggle */}
-                  <Stack direction="row" sx={{ alignItems: "flex-start", width: "100%" }}>
-                    <TextField
-                      value={checkpoint}
-                      onChange={(e) => setCheckpoint(e.target.value)}
-                      placeholder="Checkpoint"
-                      variant="outlined"
-                      size="small"
-                      disabled={saving}
-                      autoFocus
-                      sx={{
-                        flex: 1,
-                        maxWidth: 140,
-                        "& .MuiOutlinedInput-root": {
-                          color: expandedText,
-                          fontWeight: 700,
-                          fontSize: "1.225rem",
-                          lineHeight: 1.2,
-                          "& fieldset": { borderColor: "rgba(255,255,255,0.3)" },
-                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
-                          "&.Mui-focused fieldset": { borderColor: expandedText },
-                        },
-                      }}
-                    />
-                    <IconButton
-                      size="small"
-                      onClick={() => setEnabled((v) => !v)}
-                      disabled={saving}
-                      sx={{ color: expandedText, p: 0.25, flexShrink: 0, ml: "auto" }}
-                    >
-                      {enabled ? (
-                        <CheckCircleIcon sx={{ fontSize: "2rem" }} />
-                      ) : (
-                        <CircleOutlinedIcon sx={{ fontSize: "2rem" }} />
-                      )}
-                    </IconButton>
-                  </Stack>
-
-                  {/* Sort order + Time + slider */}
-                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 0.5, mt: 0.5 }}>
+                  {/* Checkpoint + order + enabled toggle */}
+                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 1 }}>
                     {editOrder && (
                     <TextField
                       value={sortOrder === 0 ? "" : sortOrder}
@@ -775,24 +707,65 @@ export default function PassingsEditor({
                         flexShrink: 0,
                         "& .MuiOutlinedInput-root": {
                           color: expandedText,
-                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          fontSize: "1.225rem",
+                          lineHeight: 1.2,
                           opacity: 0.7,
                           "& fieldset": { borderColor: "rgba(255,255,255,0.2)" },
                           "&:hover fieldset": { borderColor: "rgba(255,255,255,0.4)" },
                           "&.Mui-focused fieldset": { borderColor: expandedText },
                         },
-                        "& .MuiOutlinedInput-input": { px: 0.5, py: 0.75, textAlign: "center" },
+                        "& .MuiOutlinedInput-input": { px: 0.5, textAlign: "center" },
                       }}
                     />
                     )}
-                    <TimeInput
-                      value={time}
-                      onChange={setTime}
+                    <TextField
+                      value={checkpoint}
+                      onChange={(e) => setCheckpoint(e.target.value)}
+                      placeholder="Checkpoint"
                       variant="outlined"
                       size="small"
                       disabled={saving}
+                      autoFocus
                       sx={{
-                        maxWidth: 110,
+                        flex: 1,
+                        "& .MuiOutlinedInput-root": {
+                          color: expandedText,
+                          fontWeight: 700,
+                          fontSize: "1.225rem",
+                          lineHeight: 1.2,
+                          "& fieldset": { borderColor: "rgba(255,255,255,0.3)" },
+                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
+                          "&.Mui-focused fieldset": { borderColor: expandedText },
+                        },
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => setEnabled((v) => !v)}
+                      disabled={saving}
+                      sx={{ color: expandedText, p: 0.25, flexShrink: 0 }}
+                    >
+                      {enabled ? (
+                        <CheckCircleIcon sx={{ fontSize: "2rem" }} />
+                      ) : (
+                        <CircleOutlinedIcon sx={{ fontSize: "2rem" }} />
+                      )}
+                    </IconButton>
+                  </Stack>
+
+                  {/* Time + slider */}
+                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 1, mt: 0.5 }}>
+                    <TimeInput
+                      value={time}
+                      onChange={setTime}
+                      baseDate={passingBaseDate}
+                      timezone="UTC"
+                      allowChangeDate
+                      size="small"
+                      disabled={saving}
+                      sx={{
+                        flex: 1,
                         "& .MuiOutlinedInput-root": {
                           color: expandedText,
                           fontFamily: "monospace",
@@ -822,12 +795,13 @@ export default function PassingsEditor({
                           const t =
                             prevEnabledTs! +
                             ((val as number) / 100) * (nextEnabledTs! - prevEnabledTs!);
-                          setTime(formatTime(t));
+                          setTime(t);
                         }}
                         disabled={saving}
                         valueLabelDisplay="auto"
                         sx={{
                           flex: 1,
+                          maxWidth: 75,
                           color: expandedText,
                           "& .MuiSlider-thumb": { width: 12, height: 12 },
                         }}

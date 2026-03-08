@@ -12,7 +12,7 @@ export interface MonitorCompetitor {
   lastName: string;
   groupId: string;
   courseId: string;
-  startTime: string;
+  startTime: number;
   dsq: number;
   dnf: number;
   dns: number;
@@ -102,6 +102,9 @@ interface StoreRef {
   competitors: Loki.Collection<MonitorCompetitor>;
   courseNames: Map<string, string>;
   groupNames: Map<string, string>;
+  courseStartTimes: Map<string, number>;
+  groupStartTimes: Map<string, number>;
+  groupCourseIds: Map<string, string>;
 }
 
 function createDB(): StoreRef {
@@ -114,7 +117,7 @@ function createDB(): StoreRef {
     unique: ['id'],
     indices: ['card1', 'card2', 'bib', 'courseId', 'groupId'],
   });
-  return { db, passings, competitors, courseNames: new Map(), groupNames: new Map() };
+  return { db, passings, competitors, courseNames: new Map(), groupNames: new Map(), courseStartTimes: new Map(), groupStartTimes: new Map(), groupCourseIds: new Map() };
 }
 
 function findCompetitorByCard(store: StoreRef, card: string): MonitorCompetitor | null {
@@ -314,9 +317,19 @@ export function useMonitorStore() {
   const loadLookups = useCallback(
     (courses: Course[], groups: Group[]) => {
       store.courseNames.clear();
-      for (const c of courses) store.courseNames.set(c.id, c.name);
+      store.courseStartTimes.clear();
+      for (const c of courses) {
+        store.courseNames.set(c.id, c.name);
+        store.courseStartTimes.set(c.id, c.startTime);
+      }
       store.groupNames.clear();
-      for (const g of groups) store.groupNames.set(g.id, g.name);
+      store.groupStartTimes.clear();
+      store.groupCourseIds.clear();
+      for (const g of groups) {
+        store.groupNames.set(g.id, g.name);
+        store.groupStartTimes.set(g.id, g.startTime);
+        if (g.courseId) store.groupCourseIds.set(g.id, g.courseId);
+      }
     },
     [store],
   );

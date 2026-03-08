@@ -4,6 +4,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import type { MonitorCompetitor } from './useMonitorStore';
 import DropDownMenu from '../../../components/DropDownMenu/DropDownMenu';
 import type { DropDownMenuConfig } from '../../../components/DropDownMenu/types';
+import { formatTime } from '../../../components/PassingBlock/PassingBlock';
 
 export type ParticipantStatus = 'error' | 'ok' | 'in-progress';
 export type ParticipantHighlight = 'bib' | 'name' | 'distance' | 'group';
@@ -41,18 +42,9 @@ function statusBorderColor(status: ParticipantStatus | undefined): string | unde
   }
 }
 
-function formatStartTime(startTime: string): string {
-  if (!startTime) return '';
-  try {
-    const d = new Date(startTime);
-    if (isNaN(d.getTime())) return startTime;
-    const hh = String(d.getUTCHours()).padStart(2, '0');
-    const mm = String(d.getUTCMinutes()).padStart(2, '0');
-    const ss = String(d.getUTCSeconds()).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
-  } catch {
-    return startTime;
-  }
+function formatStartTime(startTime: number): string {
+  if (!startTime || startTime <= 0) return '';
+  return formatTime(startTime);
 }
 
 /** Returns the highest-priority status flag label, or null. Priority: DSQ > DNF > DNS. */
@@ -201,7 +193,7 @@ export default function ParticipantHeader({
               >
                 {competitor.firstName}
               </Typography>
-              {competitor.startTime && (
+              {competitor.startTime > 0 && (
                 <Typography
                   variant="caption"
                   noWrap

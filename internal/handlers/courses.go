@@ -51,7 +51,7 @@ type courseRequest struct {
 	Length         float64 `json:"length"`
 	Altitude       float64 `json:"altitude"`
 	Climb          float64 `json:"climb"`
-	StartTime      string  `json:"startTime"`
+	StartTime      float64 `json:"startTime"`
 	Price          float64 `json:"price"`
 	Description    string  `json:"description"`
 }

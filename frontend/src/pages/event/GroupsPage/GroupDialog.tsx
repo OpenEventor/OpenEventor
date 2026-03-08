@@ -18,6 +18,8 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { api } from '../../../api/client.ts';
 import type { Group } from '../../../api/types.ts';
+import TimeInput from '../../../components/TimeInput.tsx';
+import { useEvent } from '../../../contexts/EventContext.tsx';
 
 interface GroupFormData {
   name: string;
@@ -26,7 +28,7 @@ interface GroupFormData {
   gender: string;
   yearFrom: number | '';
   yearTo: number | '';
-  startTime: string;
+  startTime: number;
   price: number | '';
   description: string;
   sortOrder: number | '';
@@ -39,7 +41,7 @@ const schema = Joi.object<GroupFormData>({
   gender: Joi.string().allow('', 'M', 'F').optional(),
   yearFrom: Joi.alternatives().try(Joi.number().integer().min(1900), Joi.string().valid('')).optional(),
   yearTo: Joi.alternatives().try(Joi.number().integer().min(1900), Joi.string().valid('')).optional(),
-  startTime: Joi.string().allow('').optional(),
+  startTime: Joi.number().min(0).optional(),
   price: Joi.alternatives().try(Joi.number().min(0), Joi.string().valid('')).optional(),
   description: Joi.string().allow('').optional(),
   sortOrder: Joi.alternatives().try(Joi.number().integer(), Joi.string().valid('')).optional(),
@@ -47,7 +49,7 @@ const schema = Joi.object<GroupFormData>({
 
 const DEFAULT_VALUES: GroupFormData = {
   name: '', courseId: '', parentId: '', gender: '',
-  yearFrom: '', yearTo: '', startTime: '', price: '', description: '', sortOrder: '',
+  yearFrom: '', yearTo: '', startTime: 0, price: '', description: '', sortOrder: '',
 };
 
 interface GroupDialogProps {
@@ -62,7 +64,7 @@ function groupToForm(g: Group): GroupFormData {
   return {
     name: g.name, courseId: g.courseId, parentId: g.parentId, gender: g.gender,
     yearFrom: g.yearFrom || '', yearTo: g.yearTo || '',
-    startTime: g.startTime, price: g.price || '', description: g.description,
+    startTime: g.startTime || 0, price: g.price || '', description: g.description,
     sortOrder: g.sortOrder || '',
   };
 }
@@ -72,6 +74,7 @@ function formToPayload(data: GroupFormData) {
     ...data,
     yearFrom: data.yearFrom === '' ? 0 : Number(data.yearFrom),
     yearTo: data.yearTo === '' ? 0 : Number(data.yearTo),
+    startTime: data.startTime || 0,
     price: data.price === '' ? 0 : Number(data.price),
     sortOrder: data.sortOrder === '' ? 0 : Number(data.sortOrder),
   };
@@ -87,6 +90,7 @@ function SectionTitle({ children }: { children: string }) {
 
 export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDialogProps) {
   const isEdit = Boolean(group);
+  const { date: baseDate, timezone } = useEvent();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,7 +193,16 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="startTime" control={control} render={({ field }) => (
-                <TextField {...field} label="Start time" fullWidth size="small" placeholder="HH:MM:SS" disabled={saving} />
+                <TimeInput
+                  value={field.value || null}
+                  baseDate={baseDate}
+                  timezone={timezone}
+                  onChange={(ts) => field.onChange(ts ?? 0)}
+                  label="Start time"
+                  size="small"
+                  disabled={saving}
+                  fullWidth
+                />
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>

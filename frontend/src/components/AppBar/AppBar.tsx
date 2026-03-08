@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar as MuiAppBar,
@@ -35,13 +35,12 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
+import { useEventOptional } from "../../contexts/EventContext.tsx";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
 import DropDownMenu from "../DropDownMenu/DropDownMenu.tsx";
 import DropDownMenuRadioGroup from "../DropDownMenu/DropDownMenuRadioGroup.tsx";
 import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher.tsx";
 import type { DropDownMenuConfig } from "../DropDownMenu/types.ts";
-import { api } from "../../api/client.ts";
-import type { EventItem } from "../../api/types.ts";
 import logoSvg from "../../assets/logo.svg";
 
 export const EVENT_TABS = [
@@ -109,15 +108,10 @@ export function AppBar({ withSearch = false }: AppBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [event, setEvent] = useState<EventItem | null>(null);
+  const eventCtx = useEventOptional();
   const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
-
-  useEffect(() => {
-    if (!eventId) { setEvent(null); return; }
-    api.get<EventItem>(`/api/events/${eventId}`).then(setEvent).catch(() => setEvent(null));
-  }, [eventId]);
 
   const handleSettingsClose = () => setSettingsAnchor(null);
   const handleMoreClose = () => setMoreAnchor(null);
@@ -251,7 +245,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           {/* App name or event name */}
           {eventId ? (
             <Tooltip
-              title={event ? `${event.displayName}${event.date ? ` (${event.date})` : ""}` : ""}
+              title={eventCtx ? `${eventCtx.displayName}${eventCtx.date ? ` (${eventCtx.date})` : ""}` : ""}
               arrow
             >
               <Typography
@@ -264,7 +258,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 }}
                 onClick={() => navigate(`/events/${eventId}/competitors`)}
               >
-                {event?.displayName || "Event"}
+                {eventCtx?.displayName || "Event"}
               </Typography>
             </Tooltip>
           ) : (

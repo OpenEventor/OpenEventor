@@ -50,7 +50,7 @@ type groupRequest struct {
 	Gender      string  `json:"gender"`
 	YearFrom    int     `json:"yearFrom"`
 	YearTo      int     `json:"yearTo"`
-	StartTime   string  `json:"startTime"`
+	StartTime   float64 `json:"startTime"`
 	Price       float64 `json:"price"`
 	Description string  `json:"description"`
 	SortOrder   int     `json:"sortOrder"`

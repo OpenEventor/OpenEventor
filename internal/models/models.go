@@ -65,8 +65,8 @@ type Competitor struct {
 	Phone string `json:"phone" db:"phone"`
 	Email string `json:"email" db:"email"`
 
-	StartTime      string `json:"startTime" db:"start_time"`
-	TimeAdjustment int    `json:"timeAdjustment" db:"time_adjustment"`
+	StartTime      float64 `json:"startTime" db:"start_time"`
+	TimeAdjustment int     `json:"timeAdjustment" db:"time_adjustment"`
 
 	DSQ            int    `json:"dsq" db:"dsq"`
 	DSQDescription string `json:"dsqDescription" db:"dsq_description"`
@@ -107,7 +107,7 @@ type Group struct {
 	YearFrom int    `json:"yearFrom" db:"year_from"`
 	YearTo   int    `json:"yearTo" db:"year_to"`
 
-	StartTime string  `json:"startTime" db:"start_time"`
+	StartTime float64 `json:"startTime" db:"start_time"`
 	Price     float64 `json:"price" db:"price"`
 
 	Description string `json:"description" db:"description"`
@@ -128,7 +128,7 @@ type Course struct {
 	Altitude float64 `json:"altitude" db:"altitude"`   // max altitude, meters
 	Climb    float64 `json:"climb" db:"climb"`         // elevation gain, meters
 
-	StartTime string  `json:"startTime" db:"start_time"`
+	StartTime float64 `json:"startTime" db:"start_time"`
 	Price     float64 `json:"price" db:"price"`
 
 	Description string `json:"description" db:"description"`

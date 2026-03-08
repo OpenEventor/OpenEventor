@@ -8,6 +8,7 @@ import { renderLock, pauseRefresh } from './useMonitorStore';
 import { useMonitorContext } from './MonitorContext';
 import ParticipantHeader from './ParticipantHeader';
 import { computeDeltas } from '../../../components/PassingBlock/PassingBlock';
+import { resolveStartTime } from '../../../utils/resolveStartTime';
 import PassingBlock from './PassingBlock';
 import GapIndicator from '../../../components/GapIndicator/GapIndicator';
 import PassingsEditor from '../../../components/PassingsEditor/PassingsEditor';
@@ -23,7 +24,7 @@ interface ParticipantRowProps {
 }
 
 export default function ParticipantRow({ group, allPassings, height }: ParticipantRowProps) {
-  const { eventId } = useMonitorContext();
+  const { eventId, groups: groupsMap, courses: coursesMap } = useMonitorContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
   const [dialogState, setDialogState] = useState<{
@@ -53,7 +54,10 @@ export default function ParticipantRow({ group, allPassings, height }: Participa
     scrollRef.current?.scrollBy({ left: dir * 100, behavior: 'smooth' });
   }, []);
 
-  const deltas = computeDeltas(group.passings);
+  const effectiveStartTime = group.competitor
+    ? resolveStartTime(group.competitor, groupsMap, coursesMap)
+    : 0;
+  const deltas = computeDeltas(group.passings, effectiveStartTime || null);
 
   const btnSx = {
     width: BTN_WIDTH,

@@ -166,8 +166,8 @@ type competitorRequest struct {
 	Phone string `json:"phone"`
 	Email string `json:"email"`
 
-	StartTime      string `json:"startTime"`
-	TimeAdjustment int    `json:"timeAdjustment"`
+	StartTime      float64 `json:"startTime"`
+	TimeAdjustment int     `json:"timeAdjustment"`
 
 	DSQ            int    `json:"dsq"`
 	DSQDescription string `json:"dsqDescription"`

@@ -129,13 +129,17 @@ func (h *Handler) ExecuteImport(c *fiber.Ctx) error {
 		}
 	}
 
+	// Read event date for startTime parsing.
+	var eventDate string
+	_ = db.QueryRow("SELECT value FROM settings WHERE key = 'event_date'").Scan(&eventDate)
+
 	created, updated, skipped := 0, 0, 0
 	var errors []string
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	for rowIdx := req.StartFromRow; rowIdx < len(req.Rows); rowIdx++ {
 		row := req.Rows[rowIdx]
-		comp := applyMapping(row, req.Mapping)
+		comp := applyMapping(row, req.Mapping, eventDate)
 
 		switch req.Mode {
 		case "append", "clear_and_import":
@@ -334,7 +338,46 @@ func (h *Handler) ExecuteImport(c *fiber.Ctx) error {
 }
 
 // applyMapping converts a raw row into a competitorRequest using the column→field mapping.
-func applyMapping(row []string, mapping map[string]string) competitorRequest {
+// parseStartTimeString parses "HH:MM:SS" or "HH:MM:SS.CC" into unix timestamp using eventDate (YYYY-MM-DD).
+func parseStartTimeString(val, eventDate string) float64 {
+	if eventDate == "" {
+		return 0
+	}
+	// Try HH:MM:SS.CC or HH:MM:SS
+	parts := strings.SplitN(val, ":", 3)
+	if len(parts) < 3 {
+		return 0
+	}
+	h, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0
+	}
+	m, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0
+	}
+	secPart := parts[2]
+	var s int
+	var cs int
+	if dotIdx := strings.Index(secPart, "."); dotIdx >= 0 {
+		s, _ = strconv.Atoi(secPart[:dotIdx])
+		cStr := secPart[dotIdx+1:]
+		if len(cStr) == 1 {
+			cStr += "0"
+		}
+		cs, _ = strconv.Atoi(cStr[:2])
+	} else {
+		s, _ = strconv.Atoi(secPart)
+	}
+	t, err := time.Parse("2006-01-02", eventDate)
+	if err != nil {
+		return 0
+	}
+	t = t.Add(time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(s)*time.Second)
+	return float64(t.Unix()) + float64(cs)/100.0
+}
+
+func applyMapping(row []string, mapping map[string]string, eventDate string) competitorRequest {
 	var comp competitorRequest
 
 	for colIdxStr, field := range mapping {
@@ -389,7 +432,7 @@ func applyMapping(row []string, mapping map[string]string) competitorRequest {
 		case "email":
 			comp.Email = val
 		case "startTime":
-			comp.StartTime = val
+			comp.StartTime = parseStartTimeString(val, eventDate)
 		case "timeAdjustment":
 			if v, err := strconv.Atoi(val); err == nil {
 				comp.TimeAdjustment = v

@@ -104,6 +104,16 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
               },
             },
           },
+          MuiFilledInput: {
+            defaultProps: {
+              disableUnderline: true,
+            },
+            styleOverrides: {
+              root: {
+                borderRadius: 8,
+              },
+            },
+          },
           ...(highContrast && {
             MuiOutlinedInput: {
               styleOverrides: {

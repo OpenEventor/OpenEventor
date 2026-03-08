@@ -18,6 +18,8 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { api } from '../../../api/client.ts';
 import type { Course } from '../../../api/types.ts';
+import TimeInput from '../../../components/TimeInput.tsx';
+import { useEvent } from '../../../contexts/EventContext.tsx';
 
 interface CourseFormData {
   name: string;
@@ -27,7 +29,7 @@ interface CourseFormData {
   length: number | '';
   altitude: number | '';
   climb: number | '';
-  startTime: string;
+  startTime: number;
   price: number | '';
   description: string;
 }
@@ -40,14 +42,14 @@ const schema = Joi.object<CourseFormData>({
   length: Joi.alternatives().try(Joi.number().min(0), Joi.string().valid('')).optional(),
   altitude: Joi.alternatives().try(Joi.number().min(0), Joi.string().valid('')).optional(),
   climb: Joi.alternatives().try(Joi.number().min(0), Joi.string().valid('')).optional(),
-  startTime: Joi.string().allow('').optional(),
+  startTime: Joi.number().min(0).optional(),
   price: Joi.alternatives().try(Joi.number().min(0), Joi.string().valid('')).optional(),
   description: Joi.string().allow('').optional(),
 });
 
 const DEFAULT_VALUES: CourseFormData = {
   name: '', checkpoints: '', validationMode: 'strict', geoTrack: '',
-  length: '', altitude: '', climb: '', startTime: '', price: '', description: '',
+  length: '', altitude: '', climb: '', startTime: 0, price: '', description: '',
 };
 
 interface CourseDialogProps {
@@ -62,7 +64,7 @@ function courseToForm(c: Course): CourseFormData {
   return {
     name: c.name, checkpoints: c.checkpoints, validationMode: c.validationMode,
     geoTrack: c.geoTrack, length: c.length || '', altitude: c.altitude || '',
-    climb: c.climb || '', startTime: c.startTime, price: c.price || '', description: c.description,
+    climb: c.climb || '', startTime: c.startTime || 0, price: c.price || '', description: c.description,
   };
 }
 
@@ -72,6 +74,7 @@ function formToPayload(data: CourseFormData) {
     length: data.length === '' ? 0 : Number(data.length),
     altitude: data.altitude === '' ? 0 : Number(data.altitude),
     climb: data.climb === '' ? 0 : Number(data.climb),
+    startTime: data.startTime || 0,
     price: data.price === '' ? 0 : Number(data.price),
   };
 }
@@ -88,6 +91,7 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
   const isEdit = Boolean(course);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { date: baseDate, timezone } = useEvent();
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<CourseFormData>({
     resolver: joiResolver(schema),
@@ -178,7 +182,16 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="startTime" control={control} render={({ field }) => (
-                <TextField {...field} label="Start time" fullWidth size="small" placeholder="HH:MM:SS" disabled={saving} />
+                <TimeInput
+                  value={field.value || null}
+                  baseDate={baseDate}
+                  timezone={timezone}
+                  onChange={(ts) => field.onChange(ts ?? 0)}
+                  label="Start time"
+                  size="small"
+                  disabled={saving}
+                  fullWidth
+                />
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>

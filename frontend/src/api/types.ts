@@ -30,7 +30,7 @@ export interface Competitor {
   city: string;
   phone: string;
   email: string;
-  startTime: string;
+  startTime: number;
   timeAdjustment: number;
   dsq: number;
   dsqDescription: string;
@@ -55,7 +55,7 @@ export interface Course {
   length: number;
   altitude: number;
   climb: number;
-  startTime: string;
+  startTime: number;
   price: number;
   description: string;
   createdAt: string;
@@ -70,7 +70,7 @@ export interface Group {
   gender: string;
   yearFrom: number;
   yearTo: number;
-  startTime: string;
+  startTime: number;
   price: number;
   description: string;
   sortOrder: number;
