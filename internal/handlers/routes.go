@@ -87,6 +87,10 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	event.Put("/teams/:teamId", h.UpdateTeam)
 	event.Delete("/teams/:teamId", h.DeleteTeam)
 
+	// Settings
+	event.Get("/settings", h.GetSettings)
+	event.Put("/settings", h.UpdateSettings)
+
 	// Passings (user JWT — manual CRUD)
 	event.Get("/passings", h.ListPassings)
 	event.Post("/passings/manual", h.CreatePassing)

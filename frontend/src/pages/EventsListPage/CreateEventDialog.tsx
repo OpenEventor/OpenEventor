@@ -7,9 +7,36 @@ import {
   TextField,
   Button,
   Alert,
+  Autocomplete,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import type { Dayjs } from 'dayjs';
 import { api } from '../../api/client.ts';
 import type { EventItem } from '../../api/types.ts';
+
+const TIMEZONES = Intl.supportedValuesOf('timeZone');
+
+function getGmtOffset(tz: string): string {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+    const parts = fmt.formatToParts(new Date());
+    return parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+  } catch {
+    return '';
+  }
+}
+
+const TZ_LABELS = new Map(TIMEZONES.map((tz) => [tz, `${tz} (${getGmtOffset(tz)})`]));
+
+function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return 'UTC';
+  }
+}
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -19,21 +46,35 @@ interface CreateEventDialogProps {
 
 export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialogProps) {
   const [name, setName] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState<Dayjs | null>(null);
+  const [timezone, setTimezone] = useState(getBrowserTimezone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('Event name is required');
+      return;
+    }
+    if (!date?.isValid()) {
+      setError('Date is required');
+      return;
+    }
+    if (!timezone) {
+      setError('Timezone is required');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const event = await api.post<EventItem>('/api/events', {
         displayName: name.trim(),
-        date: date.trim() || undefined,
+        date: date.format('YYYY-MM-DD'),
+        timezone,
       });
       setName('');
-      setDate('');
+      setDate(null);
+      setTimezone(getBrowserTimezone());
       onCreated(event);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event');
@@ -45,7 +86,8 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
   const handleClose = () => {
     if (loading) return;
     setName('');
-    setDate('');
+    setDate(null);
+    setTimezone(getBrowserTimezone());
     setError(null);
     onClose();
   };
@@ -60,15 +102,37 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
-          required
           disabled={loading}
+          variant="filled"
         />
-        <TextField
-          label="Date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          placeholder="e.g. 15.03.2025"
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={(value) => setDate(value)}
+            disabled={loading}
+            format="DD.MM.YYYY"
+            slotProps={{
+              textField: {
+                variant: 'filled',
+                slotProps: {
+                  input: {
+                    disableUnderline: true,
+                    sx: { borderRadius: '4px !important' },
+                  },
+                },
+              },
+            }}
+          />
+        </LocalizationProvider>
+        <Autocomplete
+          value={timezone}
+          onChange={(_, value) => setTimezone(value ?? 'UTC')}
+          options={TIMEZONES}
+          getOptionLabel={(tz) => TZ_LABELS.get(tz) ?? tz}
+          disableClearable
           disabled={loading}
+          renderInput={(params) => <TextField {...params} label="Timezone" variant="filled" />}
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -78,7 +142,7 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
         <Button
           variant="contained"
           onClick={handleCreate}
-          disabled={loading || !name.trim()}
+          disabled={loading}
         >
           {loading ? 'Creating...' : 'Create'}
         </Button>

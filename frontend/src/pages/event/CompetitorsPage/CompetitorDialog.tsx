@@ -31,14 +31,14 @@ import { api } from "../../../api/client.ts";
 import type { Competitor, Passing, Course, Group } from "../../../api/types.ts";
 import {
   computeDeltas,
-  formatTime,
 } from "../../../components/PassingBlock/PassingBlock.tsx";
+import Time from "../../../components/Time/Time.tsx";
 import { useEvent } from "../../../contexts/EventContext.tsx";
 import { resolveStartTime } from "../../../utils/resolveStartTime.ts";
 import InteractivePassingBlock from "../../../components/PassingBlock/InteractivePassingBlock.tsx";
 import GapIndicator from "../../../components/GapIndicator/GapIndicator.tsx";
 import PassingsEditor from "../../../components/PassingsEditor/PassingsEditor.tsx";
-import TimeInput from "../../../components/TimeInput.tsx";
+import TimeInput from "../../../components/Time/TimeInput.tsx";
 import CountryPicker from "../../../components/CountryPicker/CountryPicker.tsx";
 
 interface CompetitorFormData {
@@ -455,6 +455,7 @@ function ViewContent({
   const locationParts = [c.country, c.region, c.city].filter(Boolean);
   const hasStatuses =
     c.dsq === 1 || c.dns === 1 || c.dnf === 1 || c.outOfRank === 1;
+  const { date: baseDate, timezone } = useEvent();
 
   return (
     <Stack
@@ -618,7 +619,7 @@ function ViewContent({
                       lineHeight: 1.1,
                     }}
                   >
-                    {formatTime(c.startTime)}
+                    <Time value={c.startTime} baseDate={baseDate} timezone={timezone} />
                   </Typography>
                 </Stack>
               )}
@@ -715,6 +716,7 @@ function ViewContent({
             initialIndex={editorState.index}
             initialMode={editorState.mode}
             onAfterSave={onPassingsChanged}
+            startTimestamp={effectiveStartTime}
           />
         )}
       </Stack>

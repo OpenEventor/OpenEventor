@@ -11,6 +11,12 @@ export function ProtectedRoute() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Check if we're on an event page — EventLayout handles its own AppBar + layout
+  const isEventPage = /^\/events\/[^/]+/.test(location.pathname);
+  if (isEventPage) {
+    return <Outlet />;
+  }
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <AppBar />

@@ -1,5 +1,8 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import type { Passing } from '../../api/types';
+import { useEvent } from '../../contexts/EventContext';
+import Time from '../Time/Time';
+import Delta from '../Time/Delta';
 
 // ─── Color Utilities ────────────────────────────────────────
 
@@ -21,26 +24,6 @@ export function lerpColor(from: string, to: string, t: number): string {
 export function luminance(hex: string): number {
   const [r, g, b] = hexToRgb(hex);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-}
-
-// ─── Time Formatting ────────────────────────────────────────
-
-export function formatTime(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  const hh = String(date.getUTCHours()).padStart(2, '0');
-  const mm = String(date.getUTCMinutes()).padStart(2, '0');
-  const ss = String(date.getUTCSeconds()).padStart(2, '0');
-  const cs = String(Math.floor((timestamp % 1) * 100) % 100).padStart(2, '0');
-  return `${hh}:${mm}:${ss}.${cs}`;
-}
-
-export function formatDelta(seconds: number): string {
-  const sign = seconds < 0 ? '-' : '+';
-  const abs = Math.abs(seconds);
-  const m = Math.floor(abs / 60);
-  const s = abs % 60;
-  const sFixed = s.toFixed(1);
-  return m > 0 ? `${sign}${m}:${sFixed.padStart(4, '0')}` : `${sign}${sFixed}`;
 }
 
 /** Compute deltas: time difference from previous enabled passing.
@@ -76,6 +59,7 @@ export interface PassingBlockProps {
 
 export default function PassingBlock({ passing, delta, bgcolor: bgOverride, sx, onDoubleClick, onContextMenu }: PassingBlockProps) {
   const theme = useTheme();
+  const { date: baseDate, timezone } = useEvent();
   const enabled = passing.enabled === 1;
 
   const normalBg = enabled
@@ -119,12 +103,12 @@ export default function PassingBlock({ passing, delta, bgcolor: bgOverride, sx, 
       <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
         {passing.checkpoint}
       </Typography>
-      <Typography variant="caption" sx={{ fontFamily: 'monospace', lineHeight: 1.2, opacity: 0.9 }}>
-        {formatTime(passing.timestamp)}
+      <Typography variant="caption" sx={{ fontFamily: 'monospace', lineHeight: 1.2, opacity: 0.9, alignSelf: 'flex-end' }}>
+        <Time value={passing.timestamp} baseDate={baseDate} timezone={timezone} />
       </Typography>
       {delta !== null && (
-        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem', lineHeight: 1, opacity: 0.7 }}>
-          {formatDelta(delta)}
+        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem', lineHeight: 1, opacity: 0.7, alignSelf: 'flex-end' }}>
+          <Delta value={delta} />
         </Typography>
       )}
     </Box>

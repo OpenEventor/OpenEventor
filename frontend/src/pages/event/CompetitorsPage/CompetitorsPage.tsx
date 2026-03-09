@@ -35,7 +35,8 @@ import { ColumnSettingsPanel } from '../../../components/ColumnSettingsPanel/Col
 import { api } from '../../../api/client.ts';
 import type { Competitor } from '../../../api/types.ts';
 import { CompetitorDialog } from './CompetitorDialog.tsx';
-import { formatTime } from '../../../components/PassingBlock/PassingBlock.tsx';
+import Time from '../../../components/Time/Time.tsx';
+import { useEvent } from '../../../contexts/EventContext.tsx';
 import ImportWizard from '../../../features/ImportWizard/ImportWizard.tsx';
 import { COMPETITOR_FIELDS } from '../../../features/ImportWizard/fieldDefinitions.ts';
 
@@ -74,6 +75,12 @@ const COLUMN_DEFS: ColumnDef[] = [
   { field: 'notes', label: 'Notes', defaultVisible: false },
 ];
 
+function StartTimeCell({ value }: { value: number }) {
+  const { date: baseDate, timezone } = useEvent();
+  if (!value || value <= 0) return null;
+  return <Time value={value} baseDate={baseDate} timezone={timezone} />;
+}
+
 const BASE_COLUMNS: GridColDef[] = [
   { field: 'bib', headerName: 'Bib', width: 70 },
   { field: 'lastName', headerName: 'Last Name', flex: 1, minWidth: 120 },
@@ -96,7 +103,7 @@ const BASE_COLUMNS: GridColDef[] = [
   { field: 'city', headerName: 'City', width: 110 },
   { field: 'phone', headerName: 'Phone', width: 130 },
   { field: 'email', headerName: 'Email', width: 180 },
-  { field: 'startTime', headerName: 'Start Time', width: 130, valueFormatter: (value: number) => value > 0 ? formatTime(value) : '' },
+  { field: 'startTime', headerName: 'Start Time', width: 130, renderCell: (params) => <StartTimeCell value={params.value as number} /> },
   { field: 'timeAdjustment', headerName: 'Time Adj.', width: 90, type: 'number' },
   { field: 'dsq', headerName: 'DSQ', width: 60, type: 'boolean' },
   { field: 'dns', headerName: 'DNS', width: 60, type: 'boolean' },

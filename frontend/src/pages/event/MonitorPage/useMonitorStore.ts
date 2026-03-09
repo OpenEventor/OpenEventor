@@ -18,8 +18,8 @@ export interface MonitorCompetitor {
   dns: number;
 }
 
-/** A group of passings belonging to one participant (matched via card). */
-export interface ParticipantGroup {
+/** A group of passings belonging to one competitor (matched via card). */
+export interface CompetitorGroup {
   key: string;                  // competitorId or raw card
   competitor: MonitorCompetitor | null;
   cards: string[];
@@ -124,8 +124,8 @@ function findCompetitorByCard(store: StoreRef, card: string): MonitorCompetitor 
   return store.competitors.findOne({ card1: card }) ?? store.competitors.findOne({ card2: card });
 }
 
-/** Build the sorted ParticipantGroup array from the current LokiJS state. */
-function buildGroups(store: StoreRef): ParticipantGroup[] {
+/** Build the sorted CompetitorGroup array from the current LokiJS state. */
+function buildGroups(store: StoreRef): CompetitorGroup[] {
   const allPassings = store.passings.chain().compoundsort([['sortOrder', false], ['timestamp', false]]).data();
 
   // Group passings by resolved competitor (or raw card if orphan).
@@ -154,7 +154,7 @@ function buildGroups(store: StoreRef): ParticipantGroup[] {
   }
 
   // Convert to array, sorted by most recent activity first.
-  const groups: ParticipantGroup[] = [];
+  const groups: CompetitorGroup[] = [];
   for (const [key, g] of groupMap) {
     groups.push({
       key,

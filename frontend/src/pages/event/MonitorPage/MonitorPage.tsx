@@ -19,7 +19,7 @@ import { usePassingSound } from "./usePassingSound";
 import DropDownMenu from "../../../components/DropDownMenu/DropDownMenu";
 import DropDownMenuSwitcher from "../../../components/DropDownMenu/DropDownMenuSwitcher";
 import type { DropDownMenuConfig } from "../../../components/DropDownMenu/types";
-import ParticipantRow from "./ParticipantRow";
+import CompetitorRow from "./CompetitorRow";
 import { MonitorProvider } from "./MonitorContext";
 
 const ROW_HEIGHT = 56;
@@ -397,7 +397,7 @@ export function MonitorPage() {
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
               >
-                <ParticipantRow group={group} allPassings={allPassingsByKey.get(group.key) ?? group.passings} height={ROW_HEIGHT} />
+                <CompetitorRow group={group} allPassings={allPassingsByKey.get(group.key) ?? group.passings} height={ROW_HEIGHT} />
               </Box>
             );
           })}

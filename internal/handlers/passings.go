@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/openeventor/openeventor/internal/models"
 	"github.com/openeventor/openeventor/internal/sse"
 )
+
+// roundCs rounds a float64 timestamp to 2 decimal places (centisecond precision).
+func roundCs(ts float64) float64 {
+	return math.Round(ts*100) / 100
+}
 
 // CreatePassings handles batch passing creation from timing devices (event-token auth).
 func (h *Handler) CreatePassings(c *fiber.Ctx) error {
@@ -71,6 +77,7 @@ func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 			enabled = 1 // Default: enabled for device passings.
 		}
 
+		req.Timestamp = roundCs(req.Timestamp)
 		if _, err := stmt.Exec(id, req.Card, req.Checkpoint, req.Timestamp, enabled, source, now, now); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("failed to insert passing[%d]", i)})
 		}
@@ -195,6 +202,7 @@ func (h *Handler) CreatePassing(c *fiber.Ctx) error {
 	if req.Source == "" {
 		req.Source = "manual"
 	}
+	req.Timestamp = roundCs(req.Timestamp)
 
 	_, err = db.Exec(
 		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at)
@@ -244,6 +252,7 @@ func (h *Handler) UpdatePassing(c *fiber.Ctx) error {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
+	req.Timestamp = roundCs(req.Timestamp)
 
 	result, err := db.Exec(
 		`UPDATE passings SET card = ?, checkpoint = ?, timestamp = ?, enabled = ?, source = ?, sort_order = ?, updated_at = ?

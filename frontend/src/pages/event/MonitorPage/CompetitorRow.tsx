@@ -3,10 +3,10 @@ import { Box, ButtonBase } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { Passing } from '../../../api/types';
-import type { ParticipantGroup } from './useMonitorStore';
+import type { CompetitorGroup } from './useMonitorStore';
 import { renderLock, pauseRefresh } from './useMonitorStore';
 import { useMonitorContext } from './MonitorContext';
-import ParticipantHeader from './ParticipantHeader';
+import CompetitorHeader from './CompetitorHeader';
 import { computeDeltas } from '../../../components/PassingBlock/PassingBlock';
 import { resolveStartTime } from '../../../utils/resolveStartTime';
 import PassingBlock from './PassingBlock';
@@ -16,14 +16,14 @@ import { CompetitorDialog } from '../../event/CompetitorsPage/CompetitorDialog';
 
 const BTN_WIDTH = 24;
 
-interface ParticipantRowProps {
-  group: ParticipantGroup;
+interface CompetitorRowProps {
+  group: CompetitorGroup;
   /** Unfiltered passings (includes disabled) — used by editors. */
   allPassings: Passing[];
   height: number;
 }
 
-export default function ParticipantRow({ group, allPassings, height }: ParticipantRowProps) {
+export default function CompetitorRow({ group, allPassings, height }: CompetitorRowProps) {
   const { eventId, groups: groupsMap, courses: coursesMap } = useMonitorContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
@@ -80,7 +80,7 @@ export default function ParticipantRow({ group, allPassings, height }: Participa
         overflow: 'hidden',
       }}
     >
-      <ParticipantHeader
+      <CompetitorHeader
         competitor={group.competitor}
         cards={group.cards}
         courseName={group.courseName}
@@ -142,9 +142,10 @@ export default function ParticipantRow({ group, allPassings, height }: Participa
           onEditorOpen={() => renderLock.lock()}
           onEditorClose={() => renderLock.unlock()}
           onAfterSave={() => pauseRefresh.request()}
+          startTimestamp={effectiveStartTime || null}
           headerContent={
             <Box sx={{ height: 56, display: 'flex', borderRadius: 1, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
-              <ParticipantHeader
+              <CompetitorHeader
                 competitor={group.competitor}
                 cards={group.cards}
                 courseName={group.courseName}

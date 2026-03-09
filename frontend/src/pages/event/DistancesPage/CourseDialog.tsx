@@ -18,7 +18,7 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { api } from '../../../api/client.ts';
 import type { Course } from '../../../api/types.ts';
-import TimeInput from '../../../components/TimeInput.tsx';
+import TimeInput from '../../../components/Time/TimeInput.tsx';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 
 interface CourseFormData {

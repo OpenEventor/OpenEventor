@@ -90,12 +90,12 @@ export function EventsListPage() {
   const columns: GridColDef[] = useMemo(
     () => [
       { field: 'displayName', headerName: 'Name', flex: 1, minWidth: 200 },
-      { field: 'date', headerName: 'Date', width: 120, valueFormatter: (value: string) => value || '—' },
+      { field: 'date', headerName: 'Date', width: 120, valueFormatter: (value: string) => value ? value.split('-').reverse().join('.') : '—' },
       {
         field: 'createdAt',
         headerName: 'Created',
         width: 120,
-        valueFormatter: (value: string) => (value ? new Date(value).toLocaleDateString() : '—'),
+        valueFormatter: (value: string) => value ? value.slice(0, 10).split('-').reverse().join('.') : '—',
       },
       {
         field: 'actions',

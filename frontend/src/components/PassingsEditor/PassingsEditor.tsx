@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
 import {
   Box,
   Button,
@@ -16,13 +22,16 @@ import {
 import { alpha } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsIcon from "@mui/icons-material/Settings";
-import TimeInput from "../TimeInput";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
+import TimeInput from "../Time/TimeInput";
+import Time from "../Time/Time";
+import Delta from "../Time/Delta";
+import ToggleOnIcon from "@mui/icons-material/ToggleOn";
+import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import type { Passing } from "../../api/types";
 import { api } from "../../api/client";
 import DropDownMenu from "../DropDownMenu/DropDownMenu";
 import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher";
+import { useEvent } from "../../contexts/EventContext";
 import type { DropDownMenuConfig } from "../DropDownMenu/types";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -45,6 +54,8 @@ export interface PassingsEditorProps {
   onAfterSave?: () => void;
   /** Optional header content rendered above passings list. */
   headerContent?: ReactNode;
+  /** Start timestamp for delta calculation on the first passing. */
+  startTimestamp?: number | null;
 }
 
 interface WorkingPassing {
@@ -57,27 +68,6 @@ interface WorkingPassing {
   isDirty: boolean;
   original?: Passing;
 }
-
-// ── Time helpers ────────────────────────────────────────────────────
-
-function formatTime(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  const hh = String(date.getUTCHours()).padStart(2, "0");
-  const mm = String(date.getUTCMinutes()).padStart(2, "0");
-  const ss = String(date.getUTCSeconds()).padStart(2, "0");
-  const cs = String(Math.floor((timestamp % 1) * 100) % 100).padStart(2, "0");
-  return `${hh}:${mm}:${ss}.${cs}`;
-}
-
-function formatDelta(seconds: number): string {
-  const sign = seconds < 0 ? "-" : "+";
-  const abs = Math.abs(seconds);
-  const m = Math.floor(abs / 60);
-  const s = abs % 60;
-  const sFixed = s.toFixed(1);
-  return m > 0 ? `${sign}${m}:${sFixed.padStart(4, "0")}` : `${sign}${sFixed}`;
-}
-
 
 /** Build initial working list from passings snapshot. */
 function buildWorkingList(passings: Passing[]): WorkingPassing[] {
@@ -133,9 +123,9 @@ function applyFormToItem(
 }
 
 /** Compute deltas for a working list (enabled-only logic). */
-function computeDeltas(list: WorkingPassing[]): (number | null)[] {
+function computeDeltas(list: WorkingPassing[], startTimestamp?: number | null): (number | null)[] {
   const deltas: (number | null)[] = [];
-  let prevEnabledTs: number | null = null;
+  let prevEnabledTs: number | null = startTimestamp ?? null;
   for (const item of list) {
     if (item.enabled === 1 && item.timestamp > 0 && prevEnabledTs !== null) {
       deltas.push(item.timestamp - prevEnabledTs);
@@ -160,8 +150,16 @@ interface CompactRowProps {
   shrinking?: boolean;
 }
 
-function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }: CompactRowProps) {
+function CompactRow({
+  item,
+  delta,
+  onClick,
+  onDelete,
+  onEmptyClick,
+  shrinking,
+}: CompactRowProps) {
   const theme = useTheme();
+  const { date: baseDate, timezone } = useEvent();
   const enabled = item.enabled === 1;
   const hasTime = item.timestamp > 0;
   const bgColor = enabled
@@ -174,7 +172,12 @@ function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }:
     : theme.palette.text.secondary;
 
   return (
-    <Box onClick={(e) => { if (e.target === e.currentTarget) onEmptyClick?.(); }} sx={{ display: "flex", justifyContent: "center" }}>
+    <Box
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onEmptyClick?.();
+      }}
+      sx={{ display: "flex", justifyContent: "center" }}
+    >
       <Box
         onClick={onClick}
         sx={{
@@ -182,7 +185,7 @@ function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }:
           flexDirection: "column",
           alignItems: "flex-start",
           justifyContent: "flex-start",
-          width: 110,
+          width: 170,
           minHeight: 55,
           px: 1,
           py: 0.5,
@@ -244,15 +247,38 @@ function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }:
           {item.checkpoint || "\u2014"}
         </Typography>
         {item.sortOrder !== 0 && (
-          <Typography variant="caption" sx={{ position: "absolute", top: 2, right: 4, fontSize: "0.55rem", lineHeight: 1, opacity: 0.5 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              position: "absolute",
+              top: 2,
+              right: 4,
+              fontSize: "0.55rem",
+              lineHeight: 1,
+              opacity: 0.5,
+            }}
+          >
             #{item.sortOrder}
           </Typography>
         )}
         <Typography
           variant="caption"
-          sx={{ fontFamily: "monospace", lineHeight: 1.2, opacity: 0.9 }}
+          sx={{
+            fontFamily: "monospace",
+            lineHeight: 1.2,
+            opacity: 0.9,
+            alignSelf: "flex-end",
+          }}
         >
-          {hasTime ? formatTime(item.timestamp) : "\u2014"}
+          {hasTime ? (
+            <Time
+              value={item.timestamp}
+              baseDate={baseDate}
+              timezone={timezone}
+            />
+          ) : (
+            "\u2014"
+          )}
         </Typography>
         {delta !== null && (
           <Typography
@@ -262,9 +288,10 @@ function CompactRow({ item, delta, onClick, onDelete, onEmptyClick, shrinking }:
               fontSize: "0.65rem",
               lineHeight: 1,
               opacity: 0.7,
+              alignSelf: "flex-end",
             }}
           >
-            {formatDelta(delta)}
+            <Delta value={delta} />
           </Typography>
         )}
       </Box>
@@ -287,7 +314,7 @@ function InsertionDivider({ onClick }: { onClick: () => void }) {
         bgcolor: alpha(primary, 0.3),
         cursor: "pointer",
         mx: "auto",
-        width: 110,
+        width: 170,
         "&:hover": {
           bgcolor: alpha(primary, 0.6),
           height: 8,
@@ -312,7 +339,9 @@ export default function PassingsEditor({
   onEditorClose,
   onAfterSave,
   headerContent,
+  startTimestamp,
 }: PassingsEditorProps) {
+  const { date: eventDate, timezone } = useEvent();
   const theme = useTheme();
   const expandedRef = useRef<HTMLDivElement>(null);
 
@@ -329,7 +358,9 @@ export default function PassingsEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editOrder, setEditOrder] = useState(false);
-  const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
+  const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(
+    null,
+  );
 
   // Initialize on open.
   useEffect(() => {
@@ -382,7 +413,10 @@ export default function PassingsEditor({
   useEffect(() => {
     if (expandedIdx === null) return;
     requestAnimationFrame(() => {
-      expandedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      expandedRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     });
   }, [expandedIdx]);
 
@@ -391,8 +425,16 @@ export default function PassingsEditor({
     if (expandedIdx === null) return;
     setWorkingList((prev) => {
       const copy = [...prev];
-      const fallbackRefTs = prev.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
-      copy[expandedIdx] = applyFormToItem(copy[expandedIdx], checkpoint, time, enabled, sortOrder, fallbackRefTs);
+      const fallbackRefTs =
+        prev.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
+      copy[expandedIdx] = applyFormToItem(
+        copy[expandedIdx],
+        checkpoint,
+        time,
+        enabled,
+        sortOrder,
+        fallbackRefTs,
+      );
       return copy;
     });
   }, [expandedIdx, checkpoint, time, enabled, sortOrder]);
@@ -460,23 +502,20 @@ export default function PassingsEditor({
   );
 
   // Delete a new (unsaved) passing.
-  const handleDeleteNew = useCallback(
-    (idx: number) => {
-      setWorkingList((prev) => {
-        const copy = [...prev];
-        copy.splice(idx, 1);
-        return copy;
-      });
-      // Adjust expandedIdx.
-      setExpandedIdx((prev) => {
-        if (prev === null) return null;
-        if (prev === idx) return null; // collapsed the expanded row
-        if (prev > idx) return prev - 1;
-        return prev;
-      });
-    },
-    [],
-  );
+  const handleDeleteNew = useCallback((idx: number) => {
+    setWorkingList((prev) => {
+      const copy = [...prev];
+      copy.splice(idx, 1);
+      return copy;
+    });
+    // Adjust expandedIdx.
+    setExpandedIdx((prev) => {
+      if (prev === null) return null;
+      if (prev === idx) return null; // collapsed the expanded row
+      if (prev > idx) return prev - 1;
+      return prev;
+    });
+  }, []);
 
   // Build a live view of workingList that includes current form state for the expanded row.
   const liveList = workingList.map((item, idx) => {
@@ -490,10 +529,10 @@ export default function PassingsEditor({
   });
 
   // Compute deltas from live list.
-  const deltas = computeDeltas(liveList);
+  const deltas = computeDeltas(liveList, startTimestamp);
 
   // Find nearest enabled neighbors for expanded row (slider + delta).
-  let prevEnabledTs: number | null = null;
+  let prevEnabledTs: number | null = startTimestamp ?? null;
   let nextEnabledTs: number | null = null;
   if (expandedIdx !== null) {
     for (let i = expandedIdx - 1; i >= 0; i--) {
@@ -509,20 +548,6 @@ export default function PassingsEditor({
       }
     }
   }
-
-  // Reference timestamp for baseDate derivation.
-  const referenceTimestamp =
-    expandedIdx !== null && workingList[expandedIdx]?.timestamp > 0
-      ? workingList[expandedIdx].timestamp
-      : (prevEnabledTs ?? nextEnabledTs ?? Date.now() / 1000);
-
-  const passingBaseDate = (() => {
-    const d = new Date(referenceTimestamp * 1000);
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  })();
 
   const parsedTimestamp = time;
 
@@ -549,8 +574,16 @@ export default function PassingsEditor({
     // Build the latest list by flushing inline.
     const latestList = [...workingList];
     if (expandedIdx !== null) {
-      const fallbackRefTs = latestList.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
-      latestList[expandedIdx] = applyFormToItem(latestList[expandedIdx], checkpoint, time, enabled, sortOrder, fallbackRefTs);
+      const fallbackRefTs =
+        latestList.find((p) => p.timestamp > 0)?.timestamp ?? Date.now() / 1000;
+      latestList[expandedIdx] = applyFormToItem(
+        latestList[expandedIdx],
+        checkpoint,
+        time,
+        enabled,
+        sortOrder,
+        fallbackRefTs,
+      );
     }
 
     // Collect changes.
@@ -569,7 +602,9 @@ export default function PassingsEditor({
         return;
       }
       if (item.timestamp <= 0) {
-        setError(`Valid time is required for "${item.checkpoint || "new passing"}"`);
+        setError(
+          `Valid time is required for "${item.checkpoint || "new passing"}"`,
+        );
         setSaving(false);
         return;
       }
@@ -597,7 +632,19 @@ export default function PassingsEditor({
     } finally {
       setSaving(false);
     }
-  }, [flushCurrentEdit, workingList, expandedIdx, checkpoint, time, enabled, sortOrder, card, eventId, onClose, onAfterSave]);
+  }, [
+    flushCurrentEdit,
+    workingList,
+    expandedIdx,
+    checkpoint,
+    time,
+    enabled,
+    sortOrder,
+    card,
+    eventId,
+    onClose,
+    onAfterSave,
+  ]);
 
   // Colors for expanded row.
   const expandedBg = enabled
@@ -628,11 +675,23 @@ export default function PassingsEditor({
       open={open}
       maxWidth="xs"
       fullWidth
-      PaperProps={{ sx: { height: "75vh", display: "flex", flexDirection: "column" } }}
+      PaperProps={{
+        sx: { height: "75vh", display: "flex", flexDirection: "column" },
+      }}
     >
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          py: 1.5,
+        }}
+      >
         Edit mode
-        <IconButton size="small" onClick={(e) => setSettingsAnchor(e.currentTarget)}>
+        <IconButton
+          size="small"
+          onClick={(e) => setSettingsAnchor(e.currentTarget)}
+        >
           <SettingsIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
@@ -646,7 +705,9 @@ export default function PassingsEditor({
         width={180}
       />
       <DialogContent
-        onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleCollapse();
+        }}
         sx={{
           flex: 1,
           overflow: "auto",
@@ -658,193 +719,253 @@ export default function PassingsEditor({
           bgcolor: "background.default",
         }}
       >
-        <Box sx={{ my: "auto", display: "flex", flexDirection: "column", gap: 0.5 }}>
-        {/* Header content (e.g. ParticipantHeader in Monitor) */}
-        {headerContent && (
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 0.5 }}>
-            {headerContent}
-          </Box>
-        )}
-        {/* Top insertion divider */}
-        <InsertionDivider onClick={() => handleInsert(0)} />
+        <Box
+          sx={{
+            my: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 0.5,
+          }}
+        >
+          {/* Header content (e.g. CompetitorHeader in Monitor) */}
+          {headerContent && (
+            <Box sx={{ display: "flex", justifyContent: "center", mb: 0.5 }}>
+              {headerContent}
+            </Box>
+          )}
+          {/* Top insertion divider */}
+          <InsertionDivider onClick={() => handleInsert(0)} />
 
-        {workingList.map((item, idx) => (
-          <Box key={item.id} onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }}>
-            {/* Expanded row */}
-            {idx === expandedIdx ? (
-              <Box ref={expandedRef} onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }} sx={{ display: "flex", justifyContent: "center" }}>
-                <Stack
-                  sx={{
-                    width: 265,
-                    minHeight: 100,
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 1,
-                    bgcolor: expandedBg,
-                    color: expandedText,
-                    "@keyframes expandIn": {
-                      from: { transform: "scale(0.52, 0.55)", opacity: 0 },
-                      to: { transform: "scale(1)", opacity: 1 },
-                    },
-                    animation: "expandIn 0.25s ease-out",
+          {workingList.map((item, idx) => (
+            <Box
+              key={item.id}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) handleCollapse();
+              }}
+            >
+              {/* Expanded row */}
+              {idx === expandedIdx ? (
+                <Box
+                  ref={expandedRef}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) handleCollapse();
                   }}
+                  sx={{ display: "flex", justifyContent: "center" }}
                 >
-                  {/* Checkpoint + order + enabled toggle */}
-                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 1 }}>
-                    {editOrder && (
-                    <TextField
-                      value={sortOrder === 0 ? "" : sortOrder}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        setSortOrder(Number.isNaN(val) ? 0 : val);
-                      }}
-                      placeholder="#"
-                      variant="outlined"
-                      size="small"
-                      disabled={saving}
-                      sx={{
-                        width: 38,
-                        flexShrink: 0,
-                        "& .MuiOutlinedInput-root": {
-                          color: expandedText,
-                          fontWeight: 700,
-                          fontSize: "1.225rem",
-                          lineHeight: 1.2,
-                          opacity: 0.7,
-                          "& fieldset": { borderColor: "rgba(255,255,255,0.2)" },
-                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.4)" },
-                          "&.Mui-focused fieldset": { borderColor: expandedText },
-                        },
-                        "& .MuiOutlinedInput-input": { px: 0.5, textAlign: "center" },
-                      }}
-                    />
-                    )}
-                    <TextField
-                      value={checkpoint}
-                      onChange={(e) => setCheckpoint(e.target.value)}
-                      placeholder="Checkpoint"
-                      variant="outlined"
-                      size="small"
-                      disabled={saving}
-                      autoFocus
-                      sx={{
-                        flex: 1,
-                        "& .MuiOutlinedInput-root": {
-                          color: expandedText,
-                          fontWeight: 700,
-                          fontSize: "1.225rem",
-                          lineHeight: 1.2,
-                          "& fieldset": { borderColor: "rgba(255,255,255,0.3)" },
-                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
-                          "&.Mui-focused fieldset": { borderColor: expandedText },
-                        },
-                      }}
-                    />
-                    <IconButton
-                      size="small"
-                      onClick={() => setEnabled((v) => !v)}
-                      disabled={saving}
-                      sx={{ color: expandedText, p: 0.25, flexShrink: 0 }}
+                  <Stack
+                    sx={{
+                      width: 320,
+                      minHeight: 100,
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1,
+                      bgcolor: expandedBg,
+                      color: expandedText,
+                      "@keyframes expandIn": {
+                        from: { transform: "scale(0.52, 0.55)", opacity: 0 },
+                        to: { transform: "scale(1)", opacity: 1 },
+                      },
+                      animation: "expandIn 0.25s ease-out",
+                    }}
+                  >
+                    {/* Checkpoint + order + enabled toggle */}
+                    <Stack
+                      direction="row"
+                      sx={{ alignItems: "center", width: "100%", gap: 1 }}
                     >
-                      {enabled ? (
-                        <CheckCircleIcon sx={{ fontSize: "2rem" }} />
-                      ) : (
-                        <CircleOutlinedIcon sx={{ fontSize: "2rem" }} />
+                      {editOrder && (
+                        <TextField
+                          value={sortOrder === 0 ? "" : sortOrder}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            setSortOrder(Number.isNaN(val) ? 0 : val);
+                          }}
+                          placeholder="#"
+                          variant="outlined"
+                          size="small"
+                          disabled={saving}
+                          sx={{
+                            width: 38,
+                            flexShrink: 0,
+                            "& .MuiOutlinedInput-root": {
+                              color: expandedText,
+                              fontWeight: 700,
+                              fontSize: "1.225rem",
+                              lineHeight: 1.2,
+                              opacity: 0.7,
+                              "& fieldset": {
+                                borderColor: "rgba(255,255,255,0.2)",
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "rgba(255,255,255,0.4)",
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: expandedText,
+                              },
+                            },
+                            "& .MuiOutlinedInput-input": {
+                              px: 0.5,
+                              textAlign: "center",
+                            },
+                          }}
+                        />
                       )}
-                    </IconButton>
-                  </Stack>
-
-                  {/* Time + slider */}
-                  <Stack direction="row" sx={{ alignItems: "center", width: "100%", gap: 1, mt: 0.5 }}>
-                    <TimeInput
-                      value={time}
-                      onChange={setTime}
-                      baseDate={passingBaseDate}
-                      timezone="UTC"
-                      allowChangeDate
-                      size="small"
-                      disabled={saving}
-                      sx={{
-                        flex: 1,
-                        "& .MuiOutlinedInput-root": {
-                          color: expandedText,
-                          fontFamily: "monospace",
-                          fontSize: "0.648rem",
-                          opacity: 0.9,
-                          "& fieldset": { borderColor: "rgba(255,255,255,0.3)" },
-                          "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
-                          "&.Mui-focused fieldset": { borderColor: expandedText },
-                        },
-                      }}
-                    />
-                    {prevEnabledTs !== null && nextEnabledTs !== null && (
-                      <Slider
+                      <TextField
+                        value={checkpoint}
+                        onChange={(e) => setCheckpoint(e.target.value)}
+                        placeholder="Checkpoint"
+                        variant="outlined"
                         size="small"
-                        min={0}
-                        max={100}
-                        value={
-                          parsedTimestamp !== null
-                            ? Math.round(
-                                ((parsedTimestamp - prevEnabledTs) /
-                                  (nextEnabledTs - prevEnabledTs)) *
-                                  100,
-                              )
-                            : 50
-                        }
-                        onChange={(_, val) => {
-                          const t =
-                            prevEnabledTs! +
-                            ((val as number) / 100) * (nextEnabledTs! - prevEnabledTs!);
-                          setTime(t);
-                        }}
                         disabled={saving}
-                        valueLabelDisplay="auto"
+                        autoFocus
                         sx={{
                           flex: 1,
-                          maxWidth: 75,
-                          color: expandedText,
-                          "& .MuiSlider-thumb": { width: 12, height: 12 },
+                          "& .MuiOutlinedInput-root": {
+                            color: expandedText,
+                            fontWeight: 700,
+                            fontSize: "1.225rem",
+                            lineHeight: 1.2,
+                            "& fieldset": {
+                              borderColor: "rgba(255,255,255,0.3)",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "rgba(255,255,255,0.5)",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: expandedText,
+                            },
+                          },
                         }}
                       />
-                    )}
-                  </Stack>
+                      <IconButton
+                        size="small"
+                        onClick={() => setEnabled((v) => !v)}
+                        disabled={saving}
+                        sx={{ color: expandedText, p: 0.25, flexShrink: 0 }}
+                      >
+                        {enabled ? (
+                          <ToggleOnIcon sx={{ fontSize: "2rem" }} />
+                        ) : (
+                          <ToggleOffIcon sx={{ fontSize: "2rem" }} />
+                        )}
+                      </IconButton>
+                    </Stack>
 
-                  {/* Dynamic delta */}
-                  {expandedDelta !== null && (
-                    <Typography
-                      variant="caption"
+                    {/* Time + slider */}
+                    <Stack
+                      direction="row"
                       sx={{
-                        fontFamily: "monospace",
-                        fontSize: "0.65rem",
-                        lineHeight: 1,
-                        opacity: 0.7,
+                        alignItems: "center",
+                        width: "100%",
+                        gap: 1,
                         mt: 0.5,
-                        textAlign: "center",
                       }}
                     >
-                      {expandedDelta === "invalid" ? "--:--.--" : formatDelta(expandedDelta)}
-                    </Typography>
-                  )}
-                </Stack>
-              </Box>
-            ) : (
-              /* Compact row */
-              <CompactRow
-                item={item}
-                delta={deltas[idx]}
-                onClick={() => handleSelect(idx)}
-                onDelete={item.isNew ? () => handleDeleteNew(idx) : undefined}
-                onEmptyClick={handleCollapse}
-                shrinking={idx === shrinkingIdx}
-              />
-            )}
+                      <TimeInput
+                        value={time}
+                        onChange={setTime}
+                        baseDate={eventDate}
+                        timezone={timezone}
+                        allowChangeDate
+                        size="small"
+                        disabled={saving}
+                        sx={{
+                          flex: 1,
+                          "& .MuiOutlinedInput-root": {
+                            color: expandedText,
+                            fontFamily: "monospace",
+                            fontSize: "0.648rem",
+                            opacity: 0.9,
+                            "& fieldset": {
+                              borderColor: "rgba(255,255,255,0.3)",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "rgba(255,255,255,0.5)",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: expandedText,
+                            },
+                          },
+                        }}
+                      />
+                      {prevEnabledTs !== null && nextEnabledTs !== null && (
+                        <Slider
+                          size="small"
+                          min={0}
+                          max={100}
+                          value={
+                            parsedTimestamp !== null
+                              ? Math.round(
+                                  ((parsedTimestamp - prevEnabledTs) /
+                                    (nextEnabledTs - prevEnabledTs)) *
+                                    100,
+                                )
+                              : 50
+                          }
+                          onChange={(_, val) => {
+                            const t =
+                              prevEnabledTs! +
+                              ((val as number) / 100) *
+                                (nextEnabledTs! - prevEnabledTs!);
+                            setTime(t);
+                          }}
+                          disabled={saving}
+                          valueLabelDisplay="auto"
+                          sx={{
+                            flex: 1,
+                            maxWidth: 75,
+                            color: expandedText,
+                            "& .MuiSlider-thumb": { width: 12, height: 12 },
+                          }}
+                        />
+                      )}
+                    </Stack>
 
-            {/* Insertion divider after each row */}
-            <Box onClick={(e) => { if (e.target === e.currentTarget) handleCollapse(); }} sx={{ mt: 0.5 }}>
-              <InsertionDivider onClick={() => handleInsert(idx + 1)} />
+                    {/* Dynamic delta */}
+                    {expandedDelta !== null && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: "monospace",
+                          fontSize: "0.65rem",
+                          lineHeight: 1,
+                          opacity: 0.7,
+                          mt: 0.5,
+                          textAlign: "center",
+                        }}
+                      >
+                        {expandedDelta === "invalid" ? (
+                          "--:--.--"
+                        ) : (
+                          <Delta value={expandedDelta} />
+                        )}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Box>
+              ) : (
+                /* Compact row */
+                <CompactRow
+                  item={item}
+                  delta={deltas[idx]}
+                  onClick={() => handleSelect(idx)}
+                  onDelete={item.isNew ? () => handleDeleteNew(idx) : undefined}
+                  onEmptyClick={handleCollapse}
+                  shrinking={idx === shrinkingIdx}
+                />
+              )}
+
+              {/* Insertion divider after each row */}
+              <Box
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) handleCollapse();
+                }}
+                sx={{ mt: 0.5 }}
+              >
+                <InsertionDivider onClick={() => handleInsert(idx + 1)} />
+              </Box>
             </Box>
-          </Box>
-        ))}
+          ))}
         </Box>
       </DialogContent>
 
@@ -854,7 +975,9 @@ export default function PassingsEditor({
         </Typography>
       )}
 
-      <DialogActions sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: "divider" }}>
+      <DialogActions
+        sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: "divider" }}
+      >
         <Button onClick={onClose} disabled={saving}>
           Cancel
         </Button>

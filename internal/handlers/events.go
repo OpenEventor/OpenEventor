@@ -45,6 +45,7 @@ func (h *Handler) ListEvents(c *fiber.Ctx) error {
 type createEventRequest struct {
 	DisplayName string `json:"displayName"`
 	Date        string `json:"date"`
+	Timezone    string `json:"timezone"`
 }
 
 func (h *Handler) CreateEvent(c *fiber.Ctx) error {
@@ -56,6 +57,12 @@ func (h *Handler) CreateEvent(c *fiber.Ctx) error {
 	}
 	if req.DisplayName == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "displayName is required"})
+	}
+	if req.Date == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "date is required"})
+	}
+	if req.Timezone == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "timezone is required"})
 	}
 
 	id := uuid.New().String()
@@ -91,11 +98,10 @@ func (h *Handler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create event database"})
 	}
 
-	// Store event name, date, and token in event settings.
+	// Store event name, date, timezone, and token in event settings.
 	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_name', ?)", req.DisplayName)
-	if req.Date != "" {
-		_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_date', ?)", req.Date)
-	}
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_date', ?)", req.Date)
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_timezone', ?)", req.Timezone)
 	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_token', ?)", eventToken)
 
 	return c.Status(fiber.StatusCreated).JSON(models.Event{
@@ -248,11 +254,22 @@ func (h *Handler) DeleteEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "admin access required"})
 	}
 
-	// Remove access entries, then the event record. Keep the .db file.
+	// Get filename before deleting the record.
+	var filename string
+	_ = db.QueryRow("SELECT filename FROM events WHERE id = ?", eventID).Scan(&filename)
+
+	// Close the event DB connection, remove access entries, then the event record.
+	h.DB.CloseEventDB(eventID)
 	_, _ = db.Exec("DELETE FROM event_access WHERE event_id = ?", eventID)
 	_, err = db.Exec("DELETE FROM events WHERE id = ?", eventID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete event"})
+	}
+
+	// Remove the .db file from disk.
+	if filename != "" {
+		dbPath := filepath.Join(h.DB.DataDir(), filename)
+		_ = os.Remove(dbPath)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

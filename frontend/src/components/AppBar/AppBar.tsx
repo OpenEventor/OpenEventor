@@ -138,6 +138,14 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           },
         })),
         {
+          icon: <SettingsIcon />,
+          text: "Event settings",
+          action: () => {
+            navigate(`/events/${eventId}/settings`);
+            handleMoreClose();
+          },
+        },
+        {
           Component: <Divider sx={{ my: 0.5 }} />,
         },
         {
@@ -164,14 +172,6 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 text: "Back to event list",
                 action: () => {
                   navigate("/events");
-                  handleSettingsClose();
-                },
-              },
-              {
-                icon: <SettingsIcon />,
-                text: "Event settings",
-                action: () => {
-                  navigate(`/events/${eventId}/settings`);
                   handleSettingsClose();
                 },
               },
@@ -245,7 +245,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           {/* App name or event name */}
           {eventId ? (
             <Tooltip
-              title={eventCtx ? `${eventCtx.displayName}${eventCtx.date ? ` (${eventCtx.date})` : ""}` : ""}
+              title={eventCtx ? `${eventCtx.displayName}${eventCtx.date ? ` (${eventCtx.date.split("-").reverse().join(".")})` : ""}` : ""}
               arrow
             >
               <Typography

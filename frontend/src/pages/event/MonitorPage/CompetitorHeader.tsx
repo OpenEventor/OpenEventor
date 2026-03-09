@@ -4,18 +4,19 @@ import PersonIcon from '@mui/icons-material/Person';
 import type { MonitorCompetitor } from './useMonitorStore';
 import DropDownMenu from '../../../components/DropDownMenu/DropDownMenu';
 import type { DropDownMenuConfig } from '../../../components/DropDownMenu/types';
-import { formatTime } from '../../../components/PassingBlock/PassingBlock';
+import Time from '../../../components/Time/Time';
+import { useEvent } from '../../../contexts/EventContext';
 
-export type ParticipantStatus = 'error' | 'ok' | 'in-progress';
-export type ParticipantHighlight = 'bib' | 'name' | 'distance' | 'group';
+export type CompetitorStatus = 'error' | 'ok' | 'in-progress';
+export type CompetitorHighlight = 'bib' | 'name' | 'distance' | 'group';
 
-interface ParticipantHeaderProps {
+interface CompetitorHeaderProps {
   competitor: MonitorCompetitor | null;
   cards: string[];
   courseName: string;
   groupName: string;
-  status?: ParticipantStatus;
-  highlight?: ParticipantHighlight;
+  status?: CompetitorStatus;
+  highlight?: CompetitorHighlight;
   onShowCompetitor?: () => void;
 }
 
@@ -33,7 +34,7 @@ function highlightSx(active: boolean) {
   } as const;
 }
 
-function statusBorderColor(status: ParticipantStatus | undefined): string | undefined {
+function statusBorderColor(status: CompetitorStatus | undefined): string | undefined {
   switch (status) {
     case 'error': return 'error.main';
     case 'ok': return 'success.main';
@@ -42,10 +43,6 @@ function statusBorderColor(status: ParticipantStatus | undefined): string | unde
   }
 }
 
-function formatStartTime(startTime: number): string {
-  if (!startTime || startTime <= 0) return '';
-  return formatTime(startTime);
-}
 
 /** Returns the highest-priority status flag label, or null. Priority: DSQ > DNF > DNS. */
 function getStatusFlag(competitor: MonitorCompetitor): string | null {
@@ -55,7 +52,7 @@ function getStatusFlag(competitor: MonitorCompetitor): string | null {
   return null;
 }
 
-export default function ParticipantHeader({
+export default function CompetitorHeader({
   competitor,
   cards,
   courseName,
@@ -63,21 +60,22 @@ export default function ParticipantHeader({
   status,
   highlight,
   onShowCompetitor,
-}: ParticipantHeaderProps) {
+}: CompetitorHeaderProps) {
   const theme = useTheme();
+  const { date: baseDate, timezone } = useEvent();
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const handleContextMenu = (e: MouseEvent) => {
-    if (!competitor) return;
+    if (!competitor || !onShowCompetitor) return;
     e.preventDefault();
     e.stopPropagation();
     setMenuPos({ top: e.clientY, left: e.clientX });
   };
 
-  const menu: DropDownMenuConfig | null = competitor ? {
+  const menu: DropDownMenuConfig | null = (competitor && onShowCompetitor) ? {
     title: `#${competitor.bib}`,
     items: [
-      { icon: <PersonIcon fontSize="small" />, text: 'Show competitor', action: () => { setMenuPos(null); onShowCompetitor?.(); } },
+      { icon: <PersonIcon fontSize="small" />, text: 'Show competitor', action: () => { setMenuPos(null); onShowCompetitor(); } },
     ],
   } : null;
 
@@ -93,8 +91,8 @@ export default function ParticipantHeader({
           justifyContent: 'center',
           px: 1,
           py: 0.25,
-          width: 150,
-          minWidth: 150,
+          width: 170,
+          minWidth: 170,
           height: '100%',
           bgcolor: 'background.paper',
           borderRight: 1,
@@ -206,7 +204,7 @@ export default function ParticipantHeader({
                     flexShrink: 0,
                   }}
                 >
-                  {formatStartTime(competitor.startTime)}
+                  <Time value={competitor.startTime} baseDate={baseDate} timezone={timezone} />
                 </Typography>
               )}
             </Box>

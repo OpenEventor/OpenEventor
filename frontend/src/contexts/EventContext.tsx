@@ -8,13 +8,16 @@ import {
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client.ts';
-import type { EventItem } from '../api/types.ts';
+
+/** Raw settings map from GET /api/events/:id/settings */
+export type EventSettings = Record<string, string>;
 
 interface EventContextValue {
   eventId: string;
+  settings: EventSettings;
   displayName: string;
   date: string;          // YYYY-MM-DD — used as baseDate for TimeInput
-  timezone: string;      // IANA timezone string (hardcoded "UTC" for now)
+  timezone: string;      // IANA timezone string from event settings
   loading: boolean;
 }
 
@@ -35,35 +38,29 @@ export function useEventOptional(): EventContextValue | null {
 
 export function EventProvider({ children }: { children: ReactNode }) {
   const { eventId } = useParams<{ eventId: string }>();
-  const [event, setEvent] = useState<EventItem | null>(null);
+  const [settings, setSettings] = useState<EventSettings>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!eventId) {
-      setEvent(null);
+      setSettings({});
       setLoading(false);
       return;
     }
     setLoading(true);
     api
-      .get<EventItem>(`/api/events/${eventId}`)
-      .then(setEvent)
-      .catch(() => setEvent(null))
+      .get<EventSettings>(`/api/events/${eventId}/settings`)
+      .then(setSettings)
+      .catch(() => setSettings({}))
       .finally(() => setLoading(false));
   }, [eventId]);
 
   const value: EventContextValue = {
     eventId: eventId ?? '',
-    displayName: event?.displayName ?? '',
-    date: (() => {
-      const raw = event?.date;
-      if (!raw) return new Date().toISOString().slice(0, 10);
-      // Backend may return DD.MM.YYYY — convert to YYYY-MM-DD
-      const dotMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-      if (dotMatch) return `${dotMatch[3]}-${dotMatch[2]}-${dotMatch[1]}`;
-      return raw;
-    })(),
-    timezone: 'UTC',
+    settings,
+    displayName: settings.event_name ?? '',
+    date: settings.event_date || new Date().toISOString().slice(0, 10),
+    timezone: settings.event_timezone || 'UTC',
     loading,
   };
 
