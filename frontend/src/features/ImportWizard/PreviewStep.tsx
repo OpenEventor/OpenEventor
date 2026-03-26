@@ -180,7 +180,7 @@ export default function PreviewStep({
           disableColumnMenu
           disableColumnSelector
           disableColumnResize
-          cellSelection={false}
+
           hideFooter={rows.length <= 100}
           initialState={{
             pagination: { paginationModel: { pageSize: 100 } },
