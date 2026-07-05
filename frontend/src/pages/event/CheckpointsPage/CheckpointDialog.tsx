@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import Field from '../../../components/Field/Field.tsx';
 import { api } from '../../../api/client.ts';
 import type { Checkpoint } from '../../../api/types.ts';
 
@@ -159,37 +160,46 @@ export function CheckpointDialog({ open, onClose, onSaved, eventId, checkpoint }
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 8 }}>
               <Controller name="name" control={control} render={({ field }) => (
-                <TextField {...field} label={t('common.name')} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                <Field label={t('common.name')} required error={!!errors.name}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller name="sortOrder" control={control} render={({ field }) => (
-                <TextField {...field} label={t('checkpoints.dialog.sortOrder')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('checkpoints.dialog.sortOrder')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
 
           {/* Coordinates */}
           <SectionTitle>{t('checkpoints.dialog.coordinates')}</SectionTitle>
-          <TextField
-            label={t('checkpoints.dialog.pasteCoords')}
-            fullWidth
-            size="small"
-            placeholder="55.75, 37.61"
-            helperText={t('checkpoints.dialog.pasteCoordsHelper')}
-            value={coordsInput}
-            onChange={(e) => handleCoordsChange(e.target.value)}
-            disabled={saving}
-          />
+          <Field label={t('checkpoints.dialog.pasteCoords')}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="55.75, 37.61"
+              helperText={t('checkpoints.dialog.pasteCoordsHelper')}
+              value={coordsInput}
+              onChange={(e) => handleCoordsChange(e.target.value)}
+              disabled={saving}
+            />
+          </Field>
           <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
             <Grid size={{ xs: 6 }}>
               <Controller name="latitude" control={control} render={({ field }) => (
-                <TextField {...field} label={t('checkpoints.columns.latitude')} fullWidth size="small" type="number" error={!!errors.latitude} helperText={errors.latitude?.message as string} disabled={saving} />
+                <Field label={t('checkpoints.columns.latitude')} error={!!errors.latitude}>
+                  <TextField {...field} fullWidth size="small" type="number" error={!!errors.latitude} helperText={errors.latitude?.message as string} disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6 }}>
               <Controller name="longitude" control={control} render={({ field }) => (
-                <TextField {...field} label={t('checkpoints.columns.longitude')} fullWidth size="small" type="number" error={!!errors.longitude} helperText={errors.longitude?.message as string} disabled={saving} />
+                <Field label={t('checkpoints.columns.longitude')} error={!!errors.longitude}>
+                  <TextField {...field} fullWidth size="small" type="number" error={!!errors.longitude} helperText={errors.longitude?.message as string} disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
@@ -197,7 +207,9 @@ export function CheckpointDialog({ open, onClose, onSaved, eventId, checkpoint }
           {/* Description */}
           <SectionTitle>{t('common.description')}</SectionTitle>
           <Controller name="description" control={control} render={({ field }) => (
-            <TextField {...field} label={t('common.description')} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            <Field label={t('common.description')}>
+              <TextField {...field} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            </Field>
           )} />
         </form>
       </DialogContent>

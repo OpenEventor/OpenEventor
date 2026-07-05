@@ -4,6 +4,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from 'react';
 import { useParams } from 'react-router-dom';
@@ -19,6 +20,7 @@ interface EventContextValue {
   date: string;          // YYYY-MM-DD — used as baseDate for TimeInput
   timezone: string;      // IANA timezone string from event settings
   loading: boolean;
+  refresh: () => Promise<void>; // re-fetch settings (e.g. after the settings editor saves)
 }
 
 const EventContext = createContext<EventContextValue | null>(null);
@@ -41,19 +43,26 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<EventSettings>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchSettings = useCallback(async () => {
     if (!eventId) {
       setSettings({});
       setLoading(false);
       return;
     }
     setLoading(true);
-    api
-      .get<EventSettings>(`/api/events/${eventId}/settings`)
-      .then(setSettings)
-      .catch(() => setSettings({}))
-      .finally(() => setLoading(false));
+    try {
+      const data = await api.get<EventSettings>(`/api/events/${eventId}/settings`);
+      setSettings(data);
+    } catch {
+      setSettings({});
+    } finally {
+      setLoading(false);
+    }
   }, [eventId]);
+
+  useEffect(() => {
+    void fetchSettings();
+  }, [fetchSettings]);
 
   const value: EventContextValue = {
     eventId: eventId ?? '',
@@ -62,6 +71,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     date: settings.date || settings.event_date || new Date().toISOString().slice(0, 10),
     timezone: settings.timezone || settings.event_timezone || 'UTC',
     loading,
+    refresh: fetchSettings,
   };
 
   return (

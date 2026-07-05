@@ -6,7 +6,7 @@ import { useMonitorContext } from './MonitorContext';
 import InteractivePassingBlock from '../../../components/PassingBlock/InteractivePassingBlock';
 import { lerpColor } from '../../../components/PassingBlock/PassingBlock';
 
-const HIGHLIGHT_COLOR = '#0051d8';
+const HIGHLIGHT_COLOR = '#FFE085';
 const HIGHLIGHT_STEPS = 5;
 const STEP_MS = 200;
 

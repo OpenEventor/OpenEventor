@@ -20,7 +20,7 @@ const NumberSpinner = ({
   id: idProp,
   label,
   error,
-  size = "medium",
+  size = "small",
   ...other
 }: NumberSpinnerProps) => {
   const { t } = useTranslation();

@@ -102,6 +102,15 @@ export interface Passing {
   updatedAt: string;
 }
 
+// Files (BLOBs attached to an event, e.g. the logo)
+export interface EventFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  purpose: string;
+  createdAt: string;
+}
+
 export interface Team {
   id: string;
   name: string;

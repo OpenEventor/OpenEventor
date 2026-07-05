@@ -55,6 +55,9 @@ type createEventRequest struct {
 
 func (h *Handler) CreateEvent(c *fiber.Ctx) error {
 	userID, _ := c.Locals("userId").(string)
+	if !userExists(h.DB.SystemDB(), userID) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "your session is no longer valid — please log in again"})
+	}
 
 	var req createEventRequest
 	if err := c.BodyParser(&req); err != nil {

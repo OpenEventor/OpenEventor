@@ -34,7 +34,7 @@
     "remove": "Remove",
     "confirm": "Confirm",
     "import": "Import",
-    "export": "Export",
+    "export": "Export & backup",
     "download": "Download",
     "print": "Print",
     "ok": "OK",
@@ -70,7 +70,7 @@
   "nav": {
     "events": "Events",
     "event": "Event",
-    "export": "Export",
+    "export": "Export & backup",
     "preferences": "Preferences",
     "logout": "Log out",
     "setupTheme": "Theme",
@@ -98,10 +98,10 @@
       "competitors": "Competitors",
       "groups": "Groups",
       "teams": "Teams",
-      "monitor": "Monitor",
+      "monitor": "Split monitor",
       "problems": "Problems",
       "protocols": "Protocols",
-      "export": "Export",
+      "export": "Export & backup",
       "settings": "Settings",
       "passings": "Passings",
       "modules": "Modules"
@@ -136,6 +136,11 @@
     "confirmDelete": {
       "label": "Type \"{{name}}\" to confirm",
       "placeholder": "Competitor name"
+    },
+    "bulkDelete": {
+      "title": "Delete selected",
+      "label": "Type {{count}} to delete {{count}} competitors",
+      "placeholder": "Count"
     },
     "columns": {
       "bib": "Bib",
@@ -193,7 +198,13 @@
       "startTime": "Start time",
       "startTimeRedefined": "Start time (redefined)",
       "outOfRank": "Out of rank",
-      "dsqDescription": "DSQ description"
+      "dsqDescription": "DSQ description",
+      "timeAdjustment": "Correction (sec)",
+      "timeAdjustmentHelp": "+ penalty / − handicap",
+      "entryNumber": "Entry number",
+      "price": "Price",
+      "isPaid": "Paid",
+      "isCheckin": "Checked in"
     },
     "placeholders": {
       "birthDate": "DD.MM",
@@ -201,13 +212,55 @@
     },
     "sections": {
       "groupAndDistance": "Group and distance",
-      "contacts": "Contacts"
+      "contacts": "Contacts",
+      "registration": "Registration & payment"
     },
     "view": {
       "passings": "Passings ({{count}})",
       "adjustTime": "Adjust time:",
       "genderMale": " (male)",
-      "genderFemale": " (female)"
+      "genderFemale": " (female)",
+      "scoringDistance": "Scoring distance",
+      "start": "Start",
+      "startSource": {
+        "competitor": "own start",
+        "group": "from group",
+        "course": "from distance",
+        "punch": "from first punch",
+        "none": "start not set"
+      },
+      "status": "Status",
+      "toggleDsq": "Disqualify (DSQ)",
+      "toggleDnf": "Did not finish (DNF)",
+      "toggleDns": "Did not start (DNS)",
+      "statusManual": "set by judge",
+      "statusComputed": "computed from course check",
+      "statusAuto": "If not set manually, the status is computed automatically from the course.",
+      "result": "Result",
+      "total": "Total",
+      "place": "Place",
+      "splits": "Splits",
+      "data": "Data",
+      "male": "Male",
+      "female": "Female",
+      "location": "Location",
+      "brokenOrder": "Checkpoint order is invalid",
+      "expectedOrder": "Expected order",
+      "problemsTitle": "Problems",
+      "effStatus": {
+        "ok": "Finished",
+        "dsq": "DSQ",
+        "dnf": "DNF",
+        "dns": "DNS",
+        "nc": "Out of rank"
+      },
+      "statusWord": {
+        "dsq": "disqualified",
+        "dnf": "did not finish",
+        "dns": "did not start"
+      },
+      "placeInGroup": "In group",
+      "placeInCourse": "In distance"
     },
     "status": {
       "outOfRank": "Out of Rank"
@@ -263,15 +316,17 @@
       "relaxed": "Relaxed",
       "checkpoints": "Checkpoints",
       "addCheckpoint": "Add checkpoint",
-      "addCheckpointPlaceholder": "Select or type a name",
+      "addCheckpointPlaceholder": "Select a checkpoint",
       "noCheckpoints": "No checkpoints yet. A name may repeat to form a lap.",
+      "geoTrack": "GPS track (GeoJSON)",
       "track": "Track",
       "length": "Length (m)",
       "altitude": "Altitude (m)",
       "climb": "Climb (m)",
       "settings": "Settings",
       "startTime": "Start time",
-      "price": "Price"
+      "price": "Price",
+      "noCheckpointsAvailable": "Create checkpoints first — a course is assembled from them."
     }
   },
   "events": {
@@ -333,7 +388,19 @@
     "settings": "Settings",
     "startTime": "Start time",
     "price": "Price",
-    "description": "Description"
+    "description": "Description",
+    "parentGroup": "Parent group",
+    "scoringFromParent": "Scoring distance (from parent)",
+    "inheritanceFooter": "A child group inherits its parent's scoring distance.",
+    "filters": {
+      "course": "Distance",
+      "parent": "Parent group",
+      "clearAll": "Clear all"
+    },
+    "chips": {
+      "course": "Distance: {{value}}",
+      "parent": "Parent: {{value}}"
+    }
   },
   "teams": {
     "addNew": "Add team",
@@ -450,7 +517,22 @@
     "title": "Settings",
     "empty": "No settings found.",
     "key": "Key",
-    "value": "Value"
+    "value": "Value",
+    "logo": "Logo",
+    "event": "Event",
+    "officials": "Officials",
+    "place": "Place",
+    "director": "Event director",
+    "chiefJudge": "Chief judge",
+    "chiefSecretary": "Chief secretary",
+    "uploadLogo": "Upload logo",
+    "removeLogo": "Remove",
+    "advanced": "Advanced: all settings",
+    "saved": "Settings saved",
+    "saveError": "Failed to save settings",
+    "logoError": "Failed to update logo",
+    "cropTitle": "Crop logo",
+    "zoom": "Zoom"
   },
   "modules": {
     "title": "All Modules",

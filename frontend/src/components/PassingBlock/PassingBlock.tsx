@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Box, Typography, useTheme } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import type { Passing } from '../../api/types';
 import { useEvent } from '../../contexts/EventContext';
 import Time from '../Time/Time';
@@ -59,13 +59,11 @@ export interface PassingBlockProps {
 }
 
 export default function PassingBlock({ passing, delta, bgcolor: bgOverride, sx, onDoubleClick, onContextMenu }: PassingBlockProps) {
-  const theme = useTheme();
   const { date: baseDate, timezone } = useEvent();
   const enabled = passing.enabled === 1;
 
-  const normalBg = enabled
-    ? theme.palette.primary.main
-    : (theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300]);
+  // iOS split-monitor block colors: amber (#FFBA3B) active, light grey disabled.
+  const normalBg = enabled ? '#FFBA3B' : '#E0E0E0';
 
   const bg = bgOverride ?? normalBg;
   const hoverBrightness = luminance(bg) > 0.5 ? 0.8 : 1.2;
@@ -83,7 +81,7 @@ export default function PassingBlock({ passing, delta, bgcolor: bgOverride, sx, 
         py: 0.5,
         borderRadius: 1,
         bgcolor: bg,
-        color: enabled ? 'primary.contrastText' : 'text.secondary',
+        color: enabled ? '#000' : '#737373',
         position: 'relative',
         minWidth: 72,
         height: '100%',

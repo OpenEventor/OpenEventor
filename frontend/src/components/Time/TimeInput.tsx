@@ -9,7 +9,6 @@ import {
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import FilledInput from "@mui/material/FilledInput";
 import FormHelperText from "@mui/material/FormHelperText";
@@ -86,7 +85,6 @@ export interface TimeInputProps {
   onChange: (value: number | null) => void;
   size?: "small" | "medium";
   variant?: "outlined" | "filled";
-  label?: React.ReactNode;
   disabled?: boolean;
   error?: boolean;
   helperText?: React.ReactNode;
@@ -435,9 +433,8 @@ export default function TimeInput({
   timezone,
   allowChangeDate = false,
   onChange,
-  size = "medium",
+  size = "small",
   variant = "outlined",
-  label,
   disabled = false,
   error = false,
   helperText,
@@ -823,7 +820,6 @@ export default function TimeInput({
         focused={focused}
         sx={sx}
       >
-        {label && <InputLabel shrink>{label}</InputLabel>}
         {(() => {
           const startAdornment = (
             <InputAdornment
@@ -975,8 +971,6 @@ export default function TimeInput({
           }
           return (
             <OutlinedInput
-              notched={!!label}
-              label={label}
               readOnly
               onClick={handleContainerClick}
               startAdornment={startAdornment}

@@ -34,7 +34,7 @@
     "remove": "Убрать",
     "confirm": "Подтвердить",
     "import": "Импорт",
-    "export": "Экспорт",
+    "export": "Экспорт и бэкап",
     "download": "Скачать",
     "print": "Печать",
     "ok": "OK",
@@ -70,7 +70,7 @@
   "nav": {
     "events": "Мероприятия",
     "event": "Мероприятие",
-    "export": "Экспорт",
+    "export": "Экспорт и бэкап",
     "preferences": "Настройки",
     "logout": "Выйти",
     "setupTheme": "Тема",
@@ -101,7 +101,7 @@
       "monitor": "Монитор отсечек",
       "problems": "Разбор проблем",
       "protocols": "Протоколы",
-      "export": "Экспорт",
+      "export": "Экспорт и бэкап",
       "settings": "Настройки",
       "passings": "Отметки",
       "modules": "Модули"
@@ -136,6 +136,11 @@
     "confirmDelete": {
       "label": "Введите «{{name}}» для подтверждения",
       "placeholder": "Имя участника"
+    },
+    "bulkDelete": {
+      "title": "Удалить выбранных",
+      "label": "Введите {{count}}, чтобы удалить {{count}} участников",
+      "placeholder": "Количество"
     },
     "columns": {
       "bib": "Номер",
@@ -193,7 +198,13 @@
       "startTime": "Стартовое время",
       "startTimeRedefined": "Стартовое время (переопр.)",
       "outOfRank": "Вне зачёта",
-      "dsqDescription": "Описание DSQ"
+      "dsqDescription": "Описание DSQ",
+      "timeAdjustment": "Поправка (сек)",
+      "timeAdjustmentHelp": "+ штраф / − гандикап",
+      "entryNumber": "Номер заявки",
+      "price": "Стоимость",
+      "isPaid": "Оплачено",
+      "isCheckin": "Зарегистрирован"
     },
     "placeholders": {
       "birthDate": "ДД.ММ",
@@ -201,13 +212,55 @@
     },
     "sections": {
       "groupAndDistance": "Группа и дистанция",
-      "contacts": "Контакты"
+      "contacts": "Контакты",
+      "registration": "Заявка и оплата"
     },
     "view": {
       "passings": "Отметки ({{count}})",
       "adjustTime": "Корр. времени:",
       "genderMale": " (муж.)",
-      "genderFemale": " (жен.)"
+      "genderFemale": " (жен.)",
+      "scoringDistance": "Зачётная дистанция",
+      "start": "Старт",
+      "startSource": {
+        "competitor": "личный старт",
+        "group": "из группы",
+        "course": "из дистанции",
+        "punch": "по первой отсечке",
+        "none": "старт не задан"
+      },
+      "status": "Статус",
+      "toggleDsq": "Снять (DSQ)",
+      "toggleDnf": "Не финишировал (DNF)",
+      "toggleDns": "Не стартовал (DNS)",
+      "statusManual": "установлено судьёй",
+      "statusComputed": "вычислено по проверке дистанции",
+      "statusAuto": "Если не задан вручную, статус вычисляется автоматически по прохождению дистанции.",
+      "result": "Результат",
+      "total": "Итог",
+      "place": "Место",
+      "splits": "Сплиты",
+      "data": "Данные",
+      "male": "М",
+      "female": "Ж",
+      "location": "Откуда",
+      "brokenOrder": "Порядок прохождения нарушен",
+      "expectedOrder": "Ожидаемый порядок",
+      "problemsTitle": "Проблемы",
+      "effStatus": {
+        "ok": "Зачёт",
+        "dsq": "Снят",
+        "dnf": "Не финишировал",
+        "dns": "Не стартовал",
+        "nc": "Вне зачёта"
+      },
+      "statusWord": {
+        "dsq": "снят",
+        "dnf": "не финишировал",
+        "dns": "не стартовал"
+      },
+      "placeInGroup": "В группе",
+      "placeInCourse": "На дистанции"
     },
     "status": {
       "outOfRank": "Вне зачёта"
@@ -260,18 +313,20 @@
       "editTitle": "Изменить дистанцию",
       "newTitle": "Новая дистанция",
       "strict": "Строгая",
-      "relaxed": "Свободная",
+      "relaxed": "Мягкая",
       "checkpoints": "Контрольные пункты",
       "addCheckpoint": "Добавить КП",
-      "addCheckpointPlaceholder": "Выберите или введите название",
+      "addCheckpointPlaceholder": "Выберите контрольный пункт",
       "noCheckpoints": "Пока нет КП. Название может повторяться, образуя круг.",
+      "geoTrack": "GPS-трек (GeoJSON)",
       "track": "Трасса",
       "length": "Длина (м)",
       "altitude": "Высота (м)",
       "climb": "Набор высоты (м)",
       "settings": "Настройки",
       "startTime": "Время старта",
-      "price": "Стоимость"
+      "price": "Стоимость",
+      "noCheckpointsAvailable": "Сначала создайте контрольные пункты — дистанция собирается из них."
     }
   },
   "events": {
@@ -333,7 +388,19 @@
     "settings": "Настройки",
     "startTime": "Время старта",
     "price": "Стоимость",
-    "description": "Описание"
+    "description": "Описание",
+    "parentGroup": "Родительская группа",
+    "scoringFromParent": "Зачётная дистанция (из родителя)",
+    "inheritanceFooter": "Дочерняя группа наследует зачёт родителя.",
+    "filters": {
+      "course": "Дистанция",
+      "parent": "Родительская группа",
+      "clearAll": "Очистить всё"
+    },
+    "chips": {
+      "course": "Дистанция: {{value}}",
+      "parent": "Родитель: {{value}}"
+    }
   },
   "teams": {
     "addNew": "Добавить команду",
@@ -450,7 +517,22 @@
     "title": "Настройки",
     "empty": "Настройки не найдены.",
     "key": "Ключ",
-    "value": "Значение"
+    "value": "Значение",
+    "logo": "Логотип",
+    "event": "Мероприятие",
+    "officials": "Официальные лица",
+    "place": "Место проведения",
+    "director": "Директор мероприятия",
+    "chiefJudge": "Главный судья",
+    "chiefSecretary": "Главный секретарь",
+    "uploadLogo": "Загрузить логотип",
+    "removeLogo": "Удалить",
+    "advanced": "Дополнительно (все настройки)",
+    "saved": "Настройки сохранены",
+    "saveError": "Не удалось сохранить настройки",
+    "logoError": "Не удалось обновить логотип",
+    "cropTitle": "Обрезать логотип",
+    "zoom": "Масштаб"
   },
   "modules": {
     "title": "Все модули",

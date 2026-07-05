@@ -148,9 +148,10 @@ export function TeamsPage() {
         <DataGrid
           rows={filtered} columns={columns} loading={loading}
           disableColumnMenu disableRowSelectionOnClick
+          onRowClick={(params) => { setEditingItem(params.row as Team); setDialogOpen(true); }}
           initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
           pageSizeOptions={[25, 50, 100]}
-          sx={{ height: '100%' }}
+          sx={{ height: '100%', cursor: 'pointer' }}
         />
       </Box>
     </Box>

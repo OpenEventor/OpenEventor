@@ -1,4 +1,5 @@
-import { Button, Stack, TextField, Typography } from "@mui/material";
+import { Button, Stack, TextField } from "@mui/material";
+import Field from "../Field/Field";
 import { useTranslation } from "react-i18next";
 import type { FC, InputHTMLAttributes, KeyboardEvent } from "react";
 import { useEffect, useState } from "react";
@@ -96,27 +97,22 @@ const DropDownMenuPrompt: FC<DropDownMenuPromptProps> = ({
 
   return (
     <Stack spacing={1}>
-      {showLabel && (
-        <Typography variant="body2" sx={{
-          color: "text.primary"
-        }}>
-          {resolvedLabel}
-        </Typography>
-      )}
-      <TextField
-        size="small"
-        variant="outlined"
-        type={inputType}
-        value={value}
-        placeholder={resolvedPlaceholder}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={handleKeyDown}
-        autoFocus
-        fullWidth
-        slotProps={{
-          htmlInput: inputProps
-        }}
-      />
+      <Field label={showLabel ? resolvedLabel : undefined}>
+        <TextField
+          size="small"
+          variant="outlined"
+          type={inputType}
+          value={value}
+          placeholder={resolvedPlaceholder}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          autoFocus
+          fullWidth
+          slotProps={{
+            htmlInput: inputProps
+          }}
+        />
+      </Field>
       <Stack spacing={1}>
         {show && (
           <Button

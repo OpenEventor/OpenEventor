@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { api } from '../../../api/client.ts';
 import type { Course, Checkpoint } from '../../../api/types.ts';
+import Field from '../../../components/Field/Field.tsx';
 import TimeInput from '../../../components/Time/TimeInput.tsx';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 
@@ -208,50 +209,50 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 8 }}>
               <Controller name="name" control={control} render={({ field }) => (
-                <TextField {...field} label={t('common.name')} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                <Field label={t('common.name')} required error={!!errors.name}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller name="validationMode" control={control} render={({ field }) => (
-                <TextField {...field} label={t('courses.columns.validation')} fullWidth size="small" select disabled={saving}>
-                  <MenuItem value="strict">{t('courses.dialog.strict')}</MenuItem>
-                  <MenuItem value="relaxed">{t('courses.dialog.relaxed')}</MenuItem>
-                </TextField>
+                <Field label={t('courses.columns.validation')}>
+                  <TextField {...field} fullWidth size="small" select disabled={saving}>
+                    <MenuItem value="strict">{t('courses.dialog.strict')}</MenuItem>
+                    <MenuItem value="relaxed">{t('courses.dialog.relaxed')}</MenuItem>
+                  </TextField>
+                </Field>
               )} />
             </Grid>
           </Grid>
 
-          {/* Checkpoints */}
+          {/* Checkpoints — a course is assembled strictly from the event's
+              already-created control points (like iOS): pick-only, no free-form
+              entry, so a distance can only reference real checkpoints. */}
           <SectionTitle>{t('courses.dialog.checkpoints')}</SectionTitle>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-            <Autocomplete
-              freeSolo
-              size="small"
-              options={checkpointNames}
-              value={null}
-              inputValue={addInput}
-              onInputChange={(_, v) => setAddInput(v)}
-              onChange={(_, v) => { if (typeof v === 'string') addCheckpoint(v); }}
-              disabled={saving}
-              sx={{ flex: 1 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label={t('courses.dialog.addCheckpoint')}
-                  placeholder={t('courses.dialog.addCheckpointPlaceholder')}
-                />
-              )}
-            />
-            <Button
-              variant="outlined"
-              size="small"
-              sx={{ height: 40 }}
-              onClick={() => addCheckpoint(addInput)}
-              disabled={saving || !addInput.trim()}
-            >
-              {t('common.add')}
-            </Button>
-          </Stack>
+          {checkpointNames.length === 0 ? (
+            <Alert severity="info">{t('courses.dialog.noCheckpointsAvailable')}</Alert>
+          ) : (
+            <Field label={t('courses.dialog.addCheckpoint')}>
+              <Autocomplete
+                size="small"
+                options={checkpointNames}
+                value={null}
+                inputValue={addInput}
+                onInputChange={(_, v, reason) => { if (reason === 'input') setAddInput(v); }}
+                onChange={(_, v) => { if (v) addCheckpoint(v); }}
+                disabled={saving}
+                fullWidth
+                blurOnSelect
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={t('courses.dialog.addCheckpointPlaceholder')}
+                  />
+                )}
+              />
+            </Field>
+          )}
           {sequence.length === 0 ? (
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
               {t('courses.dialog.noCheckpoints')}
@@ -297,17 +298,30 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 4 }}>
               <Controller name="length" control={control} render={({ field }) => (
-                <TextField {...field} label={t('courses.dialog.length')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('courses.dialog.length')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 4 }}>
               <Controller name="altitude" control={control} render={({ field }) => (
-                <TextField {...field} label={t('courses.dialog.altitude')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('courses.dialog.altitude')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 4 }}>
               <Controller name="climb" control={control} render={({ field }) => (
-                <TextField {...field} label={t('courses.dialog.climb')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('courses.dialog.climb')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
+              )} />
+            </Grid>
+            <Grid size={12}>
+              <Controller name="geoTrack" control={control} render={({ field }) => (
+                <Field label={t('courses.dialog.geoTrack')}>
+                  <TextField {...field} fullWidth size="small" multiline minRows={2} maxRows={6} disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
@@ -317,21 +331,24 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="startTime" control={control} render={({ field }) => (
-                <TimeInput
-                  value={field.value || null}
-                  baseDate={baseDate}
-                  timezone={timezone}
-                  onChange={(ts) => field.onChange(ts ?? 0)}
-                  label={t('courses.dialog.startTime')}
-                  size="small"
-                  disabled={saving}
-                  fullWidth
-                />
+                <Field label={t('courses.dialog.startTime')}>
+                  <TimeInput
+                    value={field.value || null}
+                    baseDate={baseDate}
+                    timezone={timezone}
+                    onChange={(ts) => field.onChange(ts ?? 0)}
+                    size="small"
+                    disabled={saving}
+                    fullWidth
+                  />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="price" control={control} render={({ field }) => (
-                <TextField {...field} label={t('courses.dialog.price')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('courses.dialog.price')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
@@ -339,7 +356,9 @@ export function CourseDialog({ open, onClose, onSaved, eventId, course }: Course
           {/* Description */}
           <SectionTitle>{t('common.description')}</SectionTitle>
           <Controller name="description" control={control} render={({ field }) => (
-            <TextField {...field} label={t('common.description')} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            <Field label={t('common.description')}>
+              <TextField {...field} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            </Field>
           )} />
         </form>
       </DialogContent>

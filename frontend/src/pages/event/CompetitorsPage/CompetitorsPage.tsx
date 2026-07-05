@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -26,7 +26,6 @@ import {
   Edit as EditIcon,
   DeleteOutlined as DeleteIcon,
   FileUpload as FileUploadIcon,
-  FileDownload as FileDownloadIcon,
   Search as SearchIcon,
   FilterAlt as FilterAltIcon,
   MoreHoriz as MoreHorizIcon,
@@ -35,6 +34,7 @@ import {
 import { DataGrid, type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid';
 import DropDownMenu from '../../../components/DropDownMenu/DropDownMenu.tsx';
 import DropDownMenuPrompt from '../../../components/DropDownMenu/DropDownMenuPrompt.tsx';
+import Field from '../../../components/Field/Field.tsx';
 import type { DropDownMenuConfig } from '../../../components/DropDownMenu/types.ts';
 import { useColumnSettings, type ColumnDef } from '../../../hooks/useColumnSettings.ts';
 import { ColumnSettingsPanel } from '../../../components/ColumnSettingsPanel/ColumnSettingsPanel.tsx';
@@ -91,7 +91,47 @@ function StartTimeCell({ value }: { value: number }) {
   return <Time value={value} baseDate={baseDate} timezone={timezone} />;
 }
 
-function buildBaseColumns(t: TFn): GridColDef[] {
+/** id → display-name maps used to resolve relational columns to human labels. */
+interface NameLookups {
+  groups: Map<string, string>;
+  courses: Map<string, string>;
+  teams: Map<string, string>;
+}
+
+// DSQ/DNF/DNS cell: shows the three-letter code instead of a check/cross — bold
+// when the status was set manually on the competitor, muted grey when it was
+// computed from course validation (empty when neither). `statuses` maps
+// competitorId → computed status ("DSQ"|"DNF"|"DNS"|"OK"|"NC") from /results.
+function statusColumn(
+  field: 'dsq' | 'dnf' | 'dns',
+  letter: string,
+  statuses: Map<string, string>,
+): GridColDef {
+  return {
+    field,
+    headerName: letter,
+    width: 64,
+    renderCell: (params) => {
+      const manual = params.value === 1;
+      const computed = !manual && statuses.get(params.row.id as string) === letter;
+      if (!manual && !computed) return '';
+      return (
+        <Box
+          component="span"
+          sx={{
+            // Both red for visibility; weight alone distinguishes manual vs computed.
+            fontWeight: manual ? 700 : 400,
+            color: 'error.main',
+          }}
+        >
+          {letter}
+        </Box>
+      );
+    },
+  };
+}
+
+function buildBaseColumns(t: TFn, lookups: NameLookups, statuses: Map<string, string>): GridColDef[] {
   return [
     { field: 'bib', headerName: t('competitors.columns.bib'), width: 70 },
     { field: 'lastName', headerName: t('competitors.columns.lastName'), flex: 1, minWidth: 120 },
@@ -101,9 +141,9 @@ function buildBaseColumns(t: TFn): GridColDef[] {
     { field: 'firstNameInt', headerName: t('competitors.columns.firstNameInt'), flex: 1, minWidth: 120 },
     { field: 'card1', headerName: t('competitors.columns.card1'), width: 100 },
     { field: 'card2', headerName: t('competitors.columns.card2'), width: 100 },
-    { field: 'groupId', headerName: t('competitors.columns.group'), width: 120 },
-    { field: 'courseId', headerName: t('competitors.columns.course'), width: 120 },
-    { field: 'teamId', headerName: t('competitors.columns.team'), width: 140 },
+    { field: 'groupId', headerName: t('competitors.columns.group'), width: 120, valueGetter: (value) => lookups.groups.get(value as string) ?? '' },
+    { field: 'courseId', headerName: t('competitors.columns.course'), width: 120, valueGetter: (value) => lookups.courses.get(value as string) ?? '' },
+    { field: 'teamId', headerName: t('competitors.columns.team'), width: 140, valueGetter: (value) => lookups.teams.get(value as string) ?? '' },
     { field: 'gender', headerName: t('competitors.columns.gender'), width: 80 },
     { field: 'birthDate', headerName: t('competitors.columns.birthDate'), width: 110 },
     { field: 'birthYear', headerName: t('competitors.columns.birthYear'), width: 100 },
@@ -116,9 +156,9 @@ function buildBaseColumns(t: TFn): GridColDef[] {
     { field: 'email', headerName: t('competitors.columns.email'), width: 180 },
     { field: 'startTime', headerName: t('competitors.columns.startTime'), width: 130, renderCell: (params) => <StartTimeCell value={params.value as number} /> },
     { field: 'timeAdjustment', headerName: t('competitors.columns.timeAdjustment'), width: 90, type: 'number' },
-    { field: 'dsq', headerName: 'DSQ', width: 60, type: 'boolean' },
-    { field: 'dns', headerName: 'DNS', width: 60, type: 'boolean' },
-    { field: 'dnf', headerName: 'DNF', width: 60, type: 'boolean' },
+    statusColumn('dsq', 'DSQ', statuses),
+    statusColumn('dns', 'DNS', statuses),
+    statusColumn('dnf', 'DNF', statuses),
     { field: 'outOfRank', headerName: t('competitors.columns.outOfRank'), width: 100, type: 'boolean' },
     { field: 'entryNumber', headerName: t('competitors.columns.entryNumber'), width: 110 },
     { field: 'price', headerName: t('competitors.columns.price'), width: 80, type: 'number' },
@@ -159,9 +199,14 @@ function matchesStatus(c: Competitor, status: StatusFilter): boolean {
 
 export function CompetitorsPage() {
   const { t } = useTranslation();
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId, competitorId } = useParams<{ eventId: string; competitorId?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // The competitor edit modal has its own URL: .../competitors/:id/edit.
+  const isEditRoute = location.pathname.endsWith('/edit');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { settings } = useEvent();
 
   // Data state
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
@@ -176,12 +221,17 @@ export function CompetitorsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  // competitorId → computed status (from on-the-fly /results), for the DSQ/DNF/DNS columns.
+  const [statusLookup, setStatusLookup] = useState<Map<string, string>>(new Map());
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
 
   // Row action menu state
   const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
   const [rowMenuCompetitorId, setRowMenuCompetitorId] = useState<string | null>(null);
+
+  // Bulk (selection) action menu state
+  const [bulkAnchor, setBulkAnchor] = useState<HTMLElement | null>(null);
 
   // Competitor dialog state
   const [dialogMode, setDialogMode] = useState<'view' | 'edit' | 'create' | null>(null);
@@ -211,8 +261,16 @@ export function CompetitorsPage() {
     ),
   }), []);
 
+  // id → name maps so relational columns render human labels (and stay
+  // sortable/filterable on the resolved name via the DataGrid valueGetter).
+  const nameLookups = useMemo<NameLookups>(() => ({
+    groups: new Map(groups.map((g) => [g.id, g.name])),
+    courses: new Map(courses.map((c) => [c.id, c.name])),
+    teams: new Map(teams.map((tm) => [tm.id, tm.name])),
+  }), [groups, courses, teams]);
+
   const columnDefs = useMemo(() => buildColumnDefs(t), [t]);
-  const baseColumns = useMemo(() => buildBaseColumns(t), [t]);
+  const baseColumns = useMemo(() => buildBaseColumns(t, nameLookups, statusLookup), [t, nameLookups, statusLookup]);
 
   const {
     visibleColumns,
@@ -229,12 +287,11 @@ export function CompetitorsPage() {
     [visibleColumns, actionsColumn],
   );
 
-  const selectedCount = selectionModel.type === 'include' ? selectionModel.ids.size : 0;
-
-  // Fetch competitors
-  const fetchCompetitors = useCallback(async () => {
+  // Fetch competitors. `silent` skips the loading overlay — used for background
+  // refreshes (e.g. after closing the modal) so the table doesn't flash.
+  const fetchCompetitors = useCallback(async (silent = false) => {
     if (!eventId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await api.get<Competitor[]>(`/api/events/${eventId}/competitors`);
@@ -242,7 +299,7 @@ export function CompetitorsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('competitors.errors.loadFailed'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [eventId, t]);
 
@@ -261,6 +318,25 @@ export function CompetitorsPage() {
       .then(([g, c, t]) => { setGroups(g); setCourses(c); setTeams(t); })
       .catch(() => { /* non-critical */ });
   }, [eventId]);
+
+  // Computed statuses for the DSQ/DNF/DNS columns. One /results call (results are
+  // computed on the fly server-side — cheap, same endpoint the modal/monitor use);
+  // refetched whenever the competitor list changes so edits stay reflected.
+  useEffect(() => {
+    const token = settings?.token;
+    if (!eventId || !token) { setStatusLookup(new Map()); return; }
+    let cancelled = false;
+    fetch(`/api/events/${eventId}/results?token=${encodeURIComponent(token)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('results'))))
+      .then((data: { results?: { competitorId: string; status: string }[] }) => {
+        if (cancelled) return;
+        const m = new Map<string, string>();
+        for (const r of data.results ?? []) m.set(r.competitorId, r.status);
+        setStatusLookup(m);
+      })
+      .catch(() => { if (!cancelled) setStatusLookup(new Map()); });
+    return () => { cancelled = true; };
+  }, [eventId, settings?.token, competitors]);
 
   // Client-side text search + filter panel
   const filteredCompetitors = useMemo(() => {
@@ -281,6 +357,21 @@ export function CompetitorsPage() {
     if (filters.checkin) rows = rows.filter((c) => c.isCheckin === 1);
     return rows;
   }, [competitors, searchText, filters]);
+
+  // Resolve the current selection to concrete competitor ids. The DataGrid model
+  // is either an explicit include-set or an exclude-set (header "select all"),
+  // the latter meaning "every visible row except these".
+  const selectedIds = useMemo<string[]>(() => {
+    if (selectionModel.type === 'exclude') {
+      return filteredCompetitors
+        .filter((c) => !selectionModel.ids.has(c.id))
+        .map((c) => c.id);
+    }
+    return filteredCompetitors
+      .filter((c) => selectionModel.ids.has(c.id))
+      .map((c) => c.id);
+  }, [selectionModel, filteredCompetitors]);
+  const selectedCount = selectedIds.length;
 
   // Active-filter chips (removable)
   const activeChips = useMemo(() => {
@@ -318,11 +409,6 @@ export function CompetitorsPage() {
           action: () => setImportOpen(true),
         },
         {
-          icon: <FileDownloadIcon />,
-          text: t('common.export'),
-          action: () => {},
-        },
-        {
           icon: <TableChartIcon />,
           text: t('competitors.tableSettings'),
           action: () => setColumnDialogOpen(true),
@@ -339,10 +425,8 @@ export function CompetitorsPage() {
   };
 
   const handleEdit = () => {
-    const comp = competitors.find((c) => c.id === rowMenuCompetitorId);
-    if (comp) {
-      setSelectedCompetitor(comp);
-      setDialogMode('edit');
+    if (rowMenuCompetitorId) {
+      navigate(`/events/${eventId}/competitors/${rowMenuCompetitorId}/edit`);
     }
     handleRowMenuClose();
   };
@@ -358,20 +442,53 @@ export function CompetitorsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!eventId || selectedIds.length === 0) return;
+    setBulkAnchor(null);
+    // Best-effort: delete each selected competitor, then refresh once.
+    await Promise.allSettled(
+      selectedIds.map((id) => api.del(`/api/events/${eventId}/competitors/${id}`)),
+    );
+    setSelectionModel({ type: 'include', ids: new Set() });
+    fetchCompetitors();
+  };
+
   const handleDialogClose = () => {
+    // Closing the edit modal (any way — save, cancel, backdrop) drops back to the
+    // view modal so the just-saved data can be checked, rather than the table.
+    if (isEditRoute && competitorId) {
+      navigate(`/events/${eventId}/competitors/${competitorId}`, { replace: true });
+      return;
+    }
     setDialogMode(null);
     setSelectedCompetitor(null);
+    // Refresh the table on close: in-modal changes (status switches, split edits,
+    // an edit-save) must land in the row. Silent so it doesn't flash the grid.
+    fetchCompetitors(true);
+    // Clear the deep-link param so the URL reflects the closed modal.
+    if (competitorId) navigate(`/events/${eventId}/competitors`, { replace: true });
   };
 
   const handleDialogSaved = () => {
+    // The table refresh happens on close (handleDialogClose); after an edit-save we
+    // drop back to the view modal, and the grid is re-read when that finally closes.
     handleDialogClose();
-    fetchCompetitors();
   };
 
   const handleAddNew = () => {
     setSelectedCompetitor(null);
     setDialogMode('create');
   };
+
+  // Deep-link: /events/:id/competitors/:competitorId opens that competitor's view
+  // modal (e.g. from «Разбор проблем»); the trailing /edit segment opens the edit
+  // modal. The dialog re-fetches by id in both modes.
+  useEffect(() => {
+    if (competitorId) {
+      setSelectedCompetitor({ id: competitorId } as Competitor);
+      setDialogMode(isEditRoute ? 'edit' : 'view');
+    }
+  }, [competitorId, isEditRoute]);
 
   const menuCompetitor = competitors.find((c) => c.id === rowMenuCompetitorId);
 
@@ -419,6 +536,39 @@ export function CompetitorsPage() {
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [menuCompetitor?.id, menuCompetitor?.lastName, menuCompetitor?.firstName, rowMenuCompetitorId, t],
+  );
+
+  // Bulk action menu (attached to the "Selected (N)" button): type-to-confirm
+  // delete of every selected competitor.
+  const bulkMenu: DropDownMenuConfig = useMemo(
+    () => ({
+      title: t('competitors.bulkDelete.title'),
+      items: [
+        {
+          Component: (
+            <DropDownMenuPrompt
+              label={t('competitors.bulkDelete.label', { count: selectedCount })}
+              placeholder={t('competitors.bulkDelete.placeholder')}
+              inputType="number"
+              confirmBtnProps={{
+                text: t('common.delete'),
+                color: 'error',
+                onClick: (value: string) => {
+                  if (value.trim() === String(selectedCount)) handleBulkDelete();
+                },
+              }}
+              cancelBtnProps={{
+                show: true,
+                text: t('common.cancel'),
+                onClick: () => setBulkAnchor(null),
+              }}
+            />
+          ),
+        },
+      ],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedCount, t],
   );
 
   return (
@@ -473,10 +623,25 @@ export function CompetitorsPage() {
 
         {/* Selected (N) — conditional */}
         {selectedCount > 0 && (
-          <Button variant="outlined" size="small" sx={{ height: 40 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            color="error"
+            sx={{ height: 40 }}
+            onClick={(e) => setBulkAnchor(e.currentTarget)}
+          >
             {t('competitors.selected', { count: selectedCount })}
           </Button>
         )}
+        <DropDownMenu
+          open={Boolean(bulkAnchor)}
+          onClose={() => setBulkAnchor(null)}
+          menu={bulkMenu}
+          anchorEl={bulkAnchor}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          width={260}
+        />
 
         {/* Spacer */}
         <Box sx={{ flexGrow: 1 }} />
@@ -515,47 +680,55 @@ export function CompetitorsPage() {
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
         <Box sx={{ p: 2, width: 280, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <TextField
-            select size="small" label={t('competitors.columns.group')}
-            value={filters.groupId}
-            onChange={(e) => setFilters((f) => ({ ...f, groupId: e.target.value }))}
-          >
-            <MenuItem value="">{t('common.all')}</MenuItem>
-            {groups.map((g) => (
-              <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select size="small" label={t('competitors.columns.course')}
-            value={filters.courseId}
-            onChange={(e) => setFilters((f) => ({ ...f, courseId: e.target.value }))}
-          >
-            <MenuItem value="">{t('common.all')}</MenuItem>
-            {courses.map((c) => (
-              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select size="small" label={t('competitors.columns.team')}
-            value={filters.teamId}
-            onChange={(e) => setFilters((f) => ({ ...f, teamId: e.target.value }))}
-          >
-            <MenuItem value="">{t('common.all')}</MenuItem>
-            {teams.map((tm) => (
-              <MenuItem key={tm.id} value={tm.id}>{tm.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select size="small" label={t('competitors.filters.status')}
-            value={filters.status}
-            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as StatusFilter }))}
-          >
-            <MenuItem value="">{t('competitors.filters.any')}</MenuItem>
-            <MenuItem value="ok">OK</MenuItem>
-            <MenuItem value="dsq">DSQ</MenuItem>
-            <MenuItem value="dnf">DNF</MenuItem>
-            <MenuItem value="dns">DNS</MenuItem>
-          </TextField>
+          <Field label={t('competitors.columns.group')}>
+            <TextField
+              select size="small" fullWidth
+              value={filters.groupId}
+              onChange={(e) => setFilters((f) => ({ ...f, groupId: e.target.value }))}
+            >
+              <MenuItem value="">{t('common.all')}</MenuItem>
+              {groups.map((g) => (
+                <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+              ))}
+            </TextField>
+          </Field>
+          <Field label={t('competitors.columns.course')}>
+            <TextField
+              select size="small" fullWidth
+              value={filters.courseId}
+              onChange={(e) => setFilters((f) => ({ ...f, courseId: e.target.value }))}
+            >
+              <MenuItem value="">{t('common.all')}</MenuItem>
+              {courses.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
+          </Field>
+          <Field label={t('competitors.columns.team')}>
+            <TextField
+              select size="small" fullWidth
+              value={filters.teamId}
+              onChange={(e) => setFilters((f) => ({ ...f, teamId: e.target.value }))}
+            >
+              <MenuItem value="">{t('common.all')}</MenuItem>
+              {teams.map((tm) => (
+                <MenuItem key={tm.id} value={tm.id}>{tm.name}</MenuItem>
+              ))}
+            </TextField>
+          </Field>
+          <Field label={t('competitors.filters.status')}>
+            <TextField
+              select size="small" fullWidth
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as StatusFilter }))}
+            >
+              <MenuItem value="">{t('competitors.filters.any')}</MenuItem>
+              <MenuItem value="ok">OK</MenuItem>
+              <MenuItem value="dsq">DSQ</MenuItem>
+              <MenuItem value="dnf">DNF</MenuItem>
+              <MenuItem value="dns">DNS</MenuItem>
+            </TextField>
+          </Field>
           <FormControlLabel
             control={<Checkbox size="small" checked={filters.paid} onChange={(_, v) => setFilters((f) => ({ ...f, paid: v }))} />}
             label={t('competitors.filters.paidOnly')}
@@ -582,7 +755,7 @@ export function CompetitorsPage() {
 
       {/* Error */}
       {error && (
-        <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchCompetitors}>{t('common.retry')}</Button>}>
+        <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={() => fetchCompetitors()}>{t('common.retry')}</Button>}>
           {error}
         </Alert>
       )}
@@ -626,7 +799,10 @@ export function CompetitorsPage() {
         mode={dialogMode ?? 'view'}
         onClose={handleDialogClose}
         onSaved={handleDialogSaved}
-        onEditClick={() => setDialogMode('edit')}
+        onEditClick={() =>
+          competitorId &&
+          navigate(`/events/${eventId}/competitors/${competitorId}/edit`)
+        }
         eventId={eventId || ''}
         competitorId={selectedCompetitor?.id}
         competitor={selectedCompetitor}
@@ -636,7 +812,7 @@ export function CompetitorsPage() {
       <ImportWizard
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onComplete={fetchCompetitors}
+        onComplete={() => fetchCompetitors()}
         entityName="competitors"
         fields={COMPETITOR_FIELDS}
         parseUrl={`/api/events/${eventId}/import/parse`}
@@ -654,10 +830,7 @@ export function CompetitorsPage() {
           disableRowSelectionOnClick
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={setSelectionModel}
-          onRowClick={(params) => {
-            setSelectedCompetitor(params.row as Competitor);
-            setDialogMode('view');
-          }}
+          onRowClick={(params) => navigate(`/events/${eventId}/competitors/${(params.row as Competitor).id}`)}
           initialState={{
             pagination: { paginationModel: { pageSize: 25 } },
           }}

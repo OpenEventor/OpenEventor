@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import {
   Alert,
   Autocomplete,
@@ -266,7 +267,7 @@ export function ProtocolsPage() {
     const { downloadProtocolPdf } = await import('./protocolPdf.ts');
     downloadProtocolPdf(
       doc,
-      { title: docTitle, eventName: displayName, eventDate: date },
+      { title: docTitle, eventName: displayName, eventDate: date ? dayjs(date).format('DD.MM.YYYY') : '' },
       fmtCtx,
       fileName,
     );
@@ -315,12 +316,12 @@ export function ProtocolsPage() {
         </Alert>
       )}
 
-      <Box sx={{ display: 'flex', gap: 2, flex: 1, minHeight: 0 }}>
+      <Box sx={{ display: 'flex', gap: 3, flex: 1, minHeight: 0 }}>
         {/* Control panel */}
         <Paper
           variant="outlined"
           sx={{
-            width: 270,
+            width: 350,
             flexShrink: 0,
             p: 2,
             overflow: 'auto',
@@ -400,7 +401,7 @@ export function ProtocolsPage() {
         </Paper>
 
         {/* Preview */}
-        <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
           {loading && !doc ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
               <CircularProgress size={32} />
@@ -415,7 +416,7 @@ export function ProtocolsPage() {
               <Box sx={{ mb: 2 }}>
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>{docTitle}</Typography>
                 <Typography variant="subtitle1" color="text.secondary">
-                  {[displayName, date].filter(Boolean).join('  •  ')}
+                  {[displayName, date ? dayjs(date).format('DD.MM.YYYY') : ''].filter(Boolean).join('  •  ')}
                 </Typography>
               </Box>
 

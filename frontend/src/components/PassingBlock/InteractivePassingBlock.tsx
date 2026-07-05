@@ -1,5 +1,4 @@
 import { useState, type MouseEvent } from 'react';
-import { useTheme } from '@mui/material';
 import ViewDayIcon from '@mui/icons-material/ViewDay';
 import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -35,7 +34,6 @@ export default function InteractivePassingBlock({
   onContextMenuOpen,
   onContextMenuClose,
 }: InteractivePassingBlockProps) {
-  const theme = useTheme();
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const enabled = passing.enabled === 1;
 
@@ -52,9 +50,7 @@ export default function InteractivePassingBlock({
     }).then(() => onAfterToggle?.());
   };
 
-  const normalBg = enabled
-    ? theme.palette.primary.main
-    : (theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300]);
+  const normalBg = enabled ? '#FFBA3B' : '#E0E0E0';   // iOS split-monitor colors
 
   const hoverBrightness = luminance(bgcolor ?? normalBg) > 0.5 ? 0.8 : 1.2;
 

@@ -10,6 +10,7 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
+import Field from '../../components/Field/Field.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 
 export function LoginPage() {
@@ -64,24 +65,26 @@ export function LoginPage() {
                 {error}
               </Alert>
             )}
-            <TextField
-              label={t('login.username')}
-              fullWidth
-              margin="normal"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-              required
-            />
-            <TextField
-              label={t('login.password')}
-              type="password"
-              fullWidth
-              margin="normal"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <Field label={t('login.username')} required sx={{ mt: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoFocus
+                required
+              />
+            </Field>
+            <Field label={t('login.password')} required sx={{ mt: 2 }}>
+              <TextField
+                type="password"
+                fullWidth
+                size="small"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </Field>
             <Button
               type="submit"
               variant="contained"

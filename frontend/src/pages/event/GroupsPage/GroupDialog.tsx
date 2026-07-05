@@ -5,6 +5,7 @@ import { joiResolver } from '@hookform/resolvers/joi';
 import Joi from 'joi';
 import {
   Alert,
+  Autocomplete,
   Button,
   Dialog,
   DialogActions,
@@ -18,7 +19,8 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { api } from '../../../api/client.ts';
-import type { Group } from '../../../api/types.ts';
+import type { Group, Course } from '../../../api/types.ts';
+import Field from '../../../components/Field/Field.tsx';
 import TimeInput from '../../../components/Time/TimeInput.tsx';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 
@@ -48,24 +50,87 @@ interface GroupDialogProps {
   group?: Group | null;
 }
 
-function groupToForm(g: Group): GroupFormData {
-  return {
-    name: g.name, courseId: g.courseId, parentId: g.parentId, gender: g.gender,
-    yearFrom: g.yearFrom || '', yearTo: g.yearTo || '',
-    startTime: g.startTime || 0, price: g.price || '', description: g.description,
-    sortOrder: g.sortOrder || '',
-  };
+interface PickerOption {
+  id: string;
+  name: string;
 }
 
-function formToPayload(data: GroupFormData) {
-  return {
-    ...data,
-    yearFrom: data.yearFrom === '' ? 0 : Number(data.yearFrom),
-    yearTo: data.yearTo === '' ? 0 : Number(data.yearTo),
-    startTime: data.startTime || 0,
-    price: data.price === '' ? 0 : Number(data.price),
-    sortOrder: data.sortOrder === '' ? 0 : Number(data.sortOrder),
-  };
+// Relational picker: displays the entity name, stores its id ("" = none).
+// Falls back to a synthetic option so a stale/unknown id is never silently lost.
+function EntityPicker({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (id: string) => void;
+  options: PickerOption[];
+  disabled?: boolean;
+}) {
+  const opts =
+    value && !options.some((o) => o.id === value)
+      ? [...options, { id: value, name: value }]
+      : options;
+  const selected = opts.find((o) => o.id === value) ?? null;
+  return (
+    <Field label={label}>
+      <Autocomplete
+        size="small"
+        options={opts}
+        getOptionLabel={(o) => o.name}
+        isOptionEqualToValue={(o, v) => o.id === v.id}
+        value={selected}
+        onChange={(_, v) => onChange(v ? v.id : '')}
+        disabled={disabled}
+        fullWidth
+        renderInput={(params) => <TextField {...params} placeholder={label} />}
+      />
+    </Field>
+  );
+}
+
+// Self + entire descendant subtree of `rootId` — the groups that must NOT be
+// offered as a parent (picking any of them would create a cycle).
+function collectExcludedParentIds(rootId: string, groups: Group[]): Set<string> {
+  const childrenOf = new Map<string, string[]>();
+  for (const g of groups) {
+    if (!g.parentId) continue;
+    const arr = childrenOf.get(g.parentId) ?? [];
+    arr.push(g.id);
+    childrenOf.set(g.parentId, arr);
+  }
+  const excluded = new Set<string>([rootId]);
+  const stack = [rootId];
+  while (stack.length) {
+    const cur = stack.pop() as string;
+    for (const child of childrenOf.get(cur) ?? []) {
+      if (!excluded.has(child)) {
+        excluded.add(child);
+        stack.push(child);
+      }
+    }
+  }
+  return excluded;
+}
+
+// Scoring-course name inherited from a parent: walk the parent chain (cycle-safe)
+// to the first ancestor that defines its own course.
+function resolveInheritedCourseName(
+  parentId: string,
+  groupsById: Map<string, Group>,
+  coursesById: Map<string, Course>,
+): string {
+  const seen = new Set<string>();
+  let g: Group | undefined = groupsById.get(parentId);
+  while (g && !seen.has(g.id)) {
+    seen.add(g.id);
+    if (g.courseId) return coursesById.get(g.courseId)?.name ?? g.courseId;
+    g = g.parentId ? groupsById.get(g.parentId) : undefined;
+  }
+  return '';
 }
 
 function SectionTitle({ children }: { children: string }) {
@@ -83,6 +148,9 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+
   const schema = useMemo(() => Joi.object<GroupFormData>({
     name: Joi.string().required().messages({ 'string.empty': t('groups.nameRequired') }),
     courseId: Joi.string().allow('').optional(),
@@ -96,7 +164,7 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
     sortOrder: Joi.alternatives().try(Joi.number().integer(), Joi.string().valid('')).optional(),
   }), [t]);
 
-  const { control, handleSubmit, reset, formState: { errors } } = useForm<GroupFormData>({
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<GroupFormData>({
     resolver: joiResolver(schema),
     defaultValues: DEFAULT_VALUES,
   });
@@ -107,6 +175,34 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
       setError(null);
     }
   }, [open, group, reset]);
+
+  // Groups (for cycle-safe parent options + inherited-course preview) and courses.
+  useEffect(() => {
+    if (!open || !eventId) return;
+    Promise.all([
+      api.get<Group[]>(`/api/events/${eventId}/groups`),
+      api.get<Course[]>(`/api/events/${eventId}/courses`),
+    ])
+      .then(([g, c]) => { setAllGroups(g); setCourses(c); })
+      .catch(() => { /* non-critical */ });
+  }, [open, eventId]);
+
+  const courseId = watch('courseId');
+  const parentId = watch('parentId');
+
+  const groupsById = useMemo(() => new Map(allGroups.map((g) => [g.id, g])), [allGroups]);
+  const coursesById = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
+
+  // Parent options exclude the group itself and its whole descendant subtree.
+  const parentOptions = useMemo(() => {
+    if (!group?.id) return allGroups;
+    const excluded = collectExcludedParentIds(group.id, allGroups);
+    return allGroups.filter((g) => !excluded.has(g.id));
+  }, [allGroups, group?.id]);
+
+  const inheritedCourseName = parentId
+    ? resolveInheritedCourseName(parentId, groupsById, coursesById)
+    : '';
 
   const onSubmit = async (data: GroupFormData) => {
     setSaving(true);
@@ -141,21 +237,27 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="name" control={control} render={({ field }) => (
-                <TextField {...field} label={t('common.name')} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                <Field label={t('common.name')} required error={!!errors.name}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6, sm: 3 }}>
               <Controller name="gender" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.gender')} fullWidth size="small" select disabled={saving}>
-                  <MenuItem value="">—</MenuItem>
-                  <MenuItem value="M">M</MenuItem>
-                  <MenuItem value="F">F</MenuItem>
-                </TextField>
+                <Field label={t('groups.gender')}>
+                  <TextField {...field} fullWidth size="small" select disabled={saving}>
+                    <MenuItem value="">—</MenuItem>
+                    <MenuItem value="M">M</MenuItem>
+                    <MenuItem value="F">F</MenuItem>
+                  </TextField>
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6, sm: 3 }}>
               <Controller name="sortOrder" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.sortOrder')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('groups.sortOrder')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
@@ -165,28 +267,62 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 6 }}>
               <Controller name="yearFrom" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.yearFrom')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('groups.yearFrom')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6 }}>
               <Controller name="yearTo" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.yearTo')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('groups.yearTo')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
 
-          {/* Links */}
+          {/* Scoring: course XOR parent (mutually exclusive) */}
           <SectionTitle>{t('groups.links')}</SectionTitle>
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="courseId" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.courseId')} fullWidth size="small" disabled={saving} />
+                <EntityPicker
+                  label={t('groups.course')}
+                  value={field.value}
+                  onChange={(id) => { field.onChange(id); if (id) setValue('parentId', ''); }}
+                  options={courses}
+                  disabled={saving || !!parentId}
+                />
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="parentId" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.parentId')} fullWidth size="small" disabled={saving} />
+                <EntityPicker
+                  label={t('groups.parentGroup')}
+                  value={field.value}
+                  onChange={(id) => { field.onChange(id); if (id) setValue('courseId', ''); }}
+                  options={parentOptions}
+                  disabled={saving || !!courseId}
+                />
               )} />
+            </Grid>
+            {parentId && (
+              <Grid size={12}>
+                <Field label={t('groups.scoringFromParent')}>
+                  <TextField
+                    value={inheritedCourseName || t('common.none')}
+                    fullWidth
+                    size="small"
+                    disabled={saving}
+                    slotProps={{ input: { readOnly: true } }}
+                  />
+                </Field>
+              </Grid>
+            )}
+            <Grid size={12}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {t('groups.inheritanceFooter')}
+              </Typography>
             </Grid>
           </Grid>
 
@@ -195,21 +331,24 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="startTime" control={control} render={({ field }) => (
-                <TimeInput
-                  value={field.value || null}
-                  baseDate={baseDate}
-                  timezone={timezone}
-                  onChange={(ts) => field.onChange(ts ?? 0)}
-                  label={t('groups.startTime')}
-                  size="small"
-                  disabled={saving}
-                  fullWidth
-                />
+                <Field label={t('groups.startTime')}>
+                  <TimeInput
+                    value={field.value || null}
+                    baseDate={baseDate}
+                    timezone={timezone}
+                    onChange={(ts) => field.onChange(ts ?? 0)}
+                    size="small"
+                    disabled={saving}
+                    fullWidth
+                  />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="price" control={control} render={({ field }) => (
-                <TextField {...field} label={t('groups.price')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('groups.price')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>
@@ -217,7 +356,9 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
           {/* Description */}
           <SectionTitle>{t('groups.description')}</SectionTitle>
           <Controller name="description" control={control} render={({ field }) => (
-            <TextField {...field} label={t('groups.description')} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            <Field label={t('groups.description')}>
+              <TextField {...field} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+            </Field>
           )} />
         </form>
       </DialogContent>
@@ -229,4 +370,24 @@ export function GroupDialog({ open, onClose, onSaved, eventId, group }: GroupDia
       </DialogActions>
     </Dialog>
   );
+}
+
+function groupToForm(g: Group): GroupFormData {
+  return {
+    name: g.name, courseId: g.courseId, parentId: g.parentId, gender: g.gender,
+    yearFrom: g.yearFrom || '', yearTo: g.yearTo || '',
+    startTime: g.startTime || 0, price: g.price || '', description: g.description,
+    sortOrder: g.sortOrder || '',
+  };
+}
+
+function formToPayload(data: GroupFormData) {
+  return {
+    ...data,
+    yearFrom: data.yearFrom === '' ? 0 : Number(data.yearFrom),
+    yearTo: data.yearTo === '' ? 0 : Number(data.yearTo),
+    startTime: data.startTime || 0,
+    price: data.price === '' ? 0 : Number(data.price),
+    sortOrder: data.sortOrder === '' ? 0 : Number(data.sortOrder),
+  };
 }

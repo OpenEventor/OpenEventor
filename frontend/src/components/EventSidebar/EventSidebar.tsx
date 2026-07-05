@@ -27,8 +27,6 @@ import {
   GroupWork as GroupsIcon,
   SwapVert as PassingsIcon,
   Diversity3 as TeamsIcon,
-  Settings as SettingsIcon,
-  Apps as AppsIcon,
   Download as DownloadIcon,
   ArrowBack as ArrowBackIcon,
   Palette as PaletteIcon,
@@ -143,21 +141,13 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
         subheader: t("nav.groups.raceDay"),
         items: [
           { path: "monitor", label: t("nav.items.monitor"), Icon: MonitorIcon },
+          { path: "passings", label: t("nav.items.passings"), Icon: PassingsIcon },
           { path: "problems", label: t("nav.items.problems"), Icon: ProblemsIcon },
           { path: "protocols", label: t("nav.items.protocols"), Icon: ProtocolsIcon },
         ],
       },
-      {
-        subheader: t("nav.groups.tools"),
-        items: [
-          { label: t("nav.items.export"), Icon: DownloadIcon, action: handleExport },
-          { path: "settings", label: t("nav.items.settings"), Icon: SettingsIcon },
-          { path: "passings", label: t("nav.items.passings"), Icon: PassingsIcon },
-          { path: "modules", label: t("nav.items.modules"), Icon: AppsIcon },
-        ],
-      },
     ],
-    [handleExport, t],
+    [t],
   );
 
   const prefsMenu: DropDownMenuConfig = useMemo(
@@ -286,8 +276,13 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
 
       <Divider />
 
+      {/* Export & backup — top-level action, right under the event name */}
+      <List dense disablePadding sx={{ pt: 1 }}>
+        {renderItem({ label: t("nav.items.export"), Icon: DownloadIcon, action: handleExport })}
+      </List>
+
       {/* Grouped navigation */}
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", py: 1 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pb: 1 }}>
         {groups.map((group) => (
           <List
             key={group.subheader}

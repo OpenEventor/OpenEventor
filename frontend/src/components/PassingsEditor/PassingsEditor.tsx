@@ -159,18 +159,12 @@ function CompactRow({
   onEmptyClick,
   shrinking,
 }: CompactRowProps) {
-  const theme = useTheme();
   const { date: baseDate, timezone } = useEvent();
   const enabled = item.enabled === 1;
   const hasTime = item.timestamp > 0;
-  const bgColor = enabled
-    ? theme.palette.primary.main
-    : theme.palette.mode === "dark"
-      ? theme.palette.grey[700]
-      : theme.palette.grey[300];
-  const textColor = enabled
-    ? theme.palette.primary.contrastText
-    : theme.palette.text.secondary;
+  // iOS split-monitor block colors.
+  const bgColor = enabled ? "#FFBA3B" : "#E0E0E0";
+  const textColor = enabled ? "#000" : "#737373";
 
   return (
     <Box
@@ -344,7 +338,6 @@ export default function PassingsEditor({
 }: PassingsEditorProps) {
   const { t } = useTranslation();
   const { date: eventDate, timezone } = useEvent();
-  const theme = useTheme();
   const expandedRef = useRef<HTMLDivElement>(null);
 
   // Working copy of all passings.
@@ -652,14 +645,9 @@ export default function PassingsEditor({
   ]);
 
   // Colors for expanded row.
-  const expandedBg = enabled
-    ? theme.palette.primary.main
-    : theme.palette.mode === "dark"
-      ? theme.palette.grey[700]
-      : theme.palette.grey[300];
-  const expandedText = enabled
-    ? theme.palette.primary.contrastText
-    : theme.palette.text.secondary;
+  // iOS split-monitor block colors.
+  const expandedBg = enabled ? "#FFBA3B" : "#E0E0E0";
+  const expandedText = enabled ? "#000" : "#737373";
 
   const settingsMenu: DropDownMenuConfig = {
     items: [

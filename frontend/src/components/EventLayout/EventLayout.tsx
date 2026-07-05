@@ -58,7 +58,7 @@ function EventShell() {
         )}
         <Box
           component="main"
-          sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: 2 }}
+          sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: 2, overflowY: 'auto' }}
         >
           <Outlet />
         </Box>

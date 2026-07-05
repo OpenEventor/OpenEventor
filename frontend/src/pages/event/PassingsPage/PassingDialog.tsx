@@ -17,6 +17,7 @@ import {
   TextField,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import Field from '../../../components/Field/Field.tsx';
 import { api } from '../../../api/client.ts';
 import type { Passing } from '../../../api/types.ts';
 
@@ -111,27 +112,37 @@ export function PassingDialog({ open, onClose, onSaved, eventId, passing }: Pass
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="card" control={control} render={({ field }) => (
-                <TextField {...field} label={t('passings.card')} required fullWidth size="small" error={!!errors.card} helperText={errors.card?.message as string} disabled={saving} autoFocus />
+                <Field label={t('passings.card')} required error={!!errors.card}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.card} helperText={errors.card?.message as string} disabled={saving} autoFocus />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="checkpoint" control={control} render={({ field }) => (
-                <TextField {...field} label={t('passings.checkpoint')} required fullWidth size="small" error={!!errors.checkpoint} helperText={errors.checkpoint?.message as string} disabled={saving} />
+                <Field label={t('passings.checkpoint')} required error={!!errors.checkpoint}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.checkpoint} helperText={errors.checkpoint?.message as string} disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={12}>
               <Controller name="timestamp" control={control} render={({ field }) => (
-                <TextField {...field} label={t('passings.timestamp')} required fullWidth size="small" type="number" placeholder="1740000000.00" error={!!errors.timestamp} helperText={errors.timestamp?.message as string} disabled={saving} />
+                <Field label={t('passings.timestamp')} required error={!!errors.timestamp}>
+                  <TextField {...field} required fullWidth size="small" type="number" placeholder="1740000000.00" error={!!errors.timestamp} helperText={errors.timestamp?.message as string} disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller name="source" control={control} render={({ field }) => (
-                <TextField {...field} label={t('passings.source')} fullWidth size="small" disabled={saving} />
+                <Field label={t('passings.source')}>
+                  <TextField {...field} fullWidth size="small" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6, sm: 3 }}>
               <Controller name="sortOrder" control={control} render={({ field }) => (
-                <TextField {...field} label={t('passings.sortOrder')} fullWidth size="small" type="number" disabled={saving} />
+                <Field label={t('passings.sortOrder')}>
+                  <TextField {...field} fullWidth size="small" type="number" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 6, sm: 3 }}>

@@ -34,6 +34,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="competitors" replace /> },
           { path: 'competitors', element: <CompetitorsPage /> },
+          { path: 'competitors/:competitorId', element: <CompetitorsPage /> },
+          { path: 'competitors/:competitorId/edit', element: <CompetitorsPage /> },
           { path: 'monitor', element: <MonitorPage /> },
           { path: 'protocols', element: <ProtocolsPage /> },
           { path: 'checkpoints', element: <CheckpointsPage /> },

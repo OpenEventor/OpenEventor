@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Autocomplete, Box, TextField } from "@mui/material";
 import type { TextFieldProps } from "@mui/material";
+import Field from "../Field/Field";
 import countries from "./countries.json";
 
 export interface Country {
@@ -64,6 +65,7 @@ export default function CountryPicker({
   const selected = resolveCountry(value);
 
   return (
+    <Field label={resolvedLabel} error={error}>
     <Autocomplete<Country, false, false, true>
       freeSolo
       options={countries as Country[]}
@@ -115,7 +117,7 @@ export default function CountryPicker({
         <TextField
           {...params}
           variant={variant}
-          label={resolvedLabel}
+          placeholder={resolvedLabel}
           size={size}
           error={error}
           helperText={helperText}
@@ -138,5 +140,6 @@ export default function CountryPicker({
       fullWidth={fullWidth}
       size={size}
     />
+    </Field>
   );
 }

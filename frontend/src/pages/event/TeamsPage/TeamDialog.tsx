@@ -15,8 +15,10 @@ import {
   TextField,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import Field from '../../../components/Field/Field.tsx';
 import { api } from '../../../api/client.ts';
 import type { Team } from '../../../api/types.ts';
+import CountryPicker from '../../../components/CountryPicker/CountryPicker.tsx';
 
 interface TeamFormData {
   name: string;
@@ -95,27 +97,43 @@ export function TeamDialog({ open, onClose, onSaved, eventId, team }: TeamDialog
           <Grid container spacing={1.5}>
             <Grid size={12}>
               <Controller name="name" control={control} render={({ field }) => (
-                <TextField {...field} label={t('common.name')} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                <Field label={t('common.name')} required error={!!errors.name}>
+                  <TextField {...field} required fullWidth size="small" error={!!errors.name} helperText={errors.name?.message as string} disabled={saving} autoFocus />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller name="country" control={control} render={({ field }) => (
-                <TextField {...field} label={t('teams.country')} fullWidth size="small" disabled={saving} />
+                <CountryPicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  label={t('teams.country')}
+                  variant="outlined"
+                  size="small"
+                  disabled={saving}
+                  fullWidth
+                />
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller name="region" control={control} render={({ field }) => (
-                <TextField {...field} label={t('teams.region')} fullWidth size="small" disabled={saving} />
+                <Field label={t('teams.region')}>
+                  <TextField {...field} fullWidth size="small" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller name="city" control={control} render={({ field }) => (
-                <TextField {...field} label={t('teams.city')} fullWidth size="small" disabled={saving} />
+                <Field label={t('teams.city')}>
+                  <TextField {...field} fullWidth size="small" disabled={saving} />
+                </Field>
               )} />
             </Grid>
             <Grid size={12}>
               <Controller name="description" control={control} render={({ field }) => (
-                <TextField {...field} label={t('teams.description')} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+                <Field label={t('teams.description')}>
+                  <TextField {...field} fullWidth size="small" multiline minRows={2} maxRows={4} disabled={saving} />
+                </Field>
               )} />
             </Grid>
           </Grid>

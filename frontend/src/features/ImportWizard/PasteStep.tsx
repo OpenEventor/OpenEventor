@@ -45,6 +45,7 @@ export default function PasteStep({ onParsed, onBack }: PasteStepProps) {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2, px: 2 }}>
       <TextField
         multiline
+        size="small"
         minRows={8}
         maxRows={16}
         value={text}

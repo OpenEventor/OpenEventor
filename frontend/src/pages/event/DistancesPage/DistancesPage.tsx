@@ -83,7 +83,13 @@ export function DistancesPage() {
         } catch { return value; }
       },
     },
-    { field: 'validationMode', headerName: t('courses.columns.validation'), width: 100 },
+    {
+      field: 'validationMode', headerName: t('courses.columns.validation'), width: 100,
+      valueFormatter: (value: string) =>
+        value === 'relaxed' ? t('courses.dialog.relaxed')
+          : value === 'strict' ? t('courses.dialog.strict')
+            : (value || '—'),
+    },
     { field: 'length', headerName: t('courses.columns.length'), width: 100, type: 'number' },
     { field: 'climb', headerName: t('courses.columns.climb'), width: 100, type: 'number' },
     { field: 'price', headerName: t('courses.columns.price'), width: 80, type: 'number' },
@@ -158,9 +164,10 @@ export function DistancesPage() {
         <DataGrid
           rows={filtered} columns={columns} loading={loading}
           disableColumnMenu disableRowSelectionOnClick
+          onRowClick={(params) => { setEditingItem(params.row as Course); setDialogOpen(true); }}
           initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
           pageSizeOptions={[25, 50, 100]}
-          sx={{ height: '100%' }}
+          sx={{ height: '100%', cursor: 'pointer' }}
         />
       </Box>
     </Box>

@@ -98,6 +98,12 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	event.Get("/settings", h.GetSettings)
 	event.Put("/settings", h.UpdateSettings)
 
+	// Files (logo/header/etc. stored as BLOBs in the event DB)
+	event.Get("/files", h.ListFiles)
+	event.Post("/files", h.UploadFile)
+	event.Get("/files/:fileId", h.GetFile)
+	event.Delete("/files/:fileId", h.DeleteFile)
+
 	// Passings (user JWT — manual CRUD)
 	event.Get("/passings", h.ListPassings)
 	event.Post("/passings/manual", h.CreatePassing)

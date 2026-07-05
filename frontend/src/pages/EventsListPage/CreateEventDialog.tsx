@@ -14,6 +14,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import type { Dayjs } from 'dayjs';
+import Field from '../../components/Field/Field.tsx';
 import { api } from '../../api/client.ts';
 import type { EventItem } from '../../api/types.ts';
 
@@ -99,43 +100,53 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
       <DialogTitle>{t('events.createEvent')}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
         {error && <Alert severity="error">{error}</Alert>}
-        <TextField
-          label={t('events.eventName')}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-          disabled={loading}
-          variant="filled"
-        />
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker
-            label={t('common.date')}
-            value={date}
-            onChange={(value) => setDate(value)}
+        <Field label={t('events.eventName')}>
+          <TextField
+            fullWidth
+            size="small"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
             disabled={loading}
-            format="DD.MM.YYYY"
-            slotProps={{
-              textField: {
-                variant: 'filled',
-                slotProps: {
-                  input: {
-                    disableUnderline: true,
-                    sx: { borderRadius: '4px !important' },
+            variant="filled"
+          />
+        </Field>
+        <Field label={t('common.date')}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              value={date}
+              onChange={(value) => setDate(value)}
+              disabled={loading}
+              format="DD.MM.YYYY"
+              slotProps={{
+                textField: {
+                  size: 'small',
+                  fullWidth: true,
+                  variant: 'filled',
+                  slotProps: {
+                    input: {
+                      disableUnderline: true,
+                      sx: { borderRadius: '4px !important' },
+                    },
                   },
                 },
-              },
-            }}
+              }}
+            />
+          </LocalizationProvider>
+        </Field>
+        <Field label={t('events.timezone')}>
+          <Autocomplete
+            value={timezone}
+            onChange={(_, value) => setTimezone(value ?? 'UTC')}
+            options={TIMEZONES}
+            getOptionLabel={(tz) => TZ_LABELS.get(tz) ?? tz}
+            disableClearable
+            disabled={loading}
+            size="small"
+            fullWidth
+            renderInput={(params) => <TextField {...params} placeholder={t('events.timezone')} variant="filled" />}
           />
-        </LocalizationProvider>
-        <Autocomplete
-          value={timezone}
-          onChange={(_, value) => setTimezone(value ?? 'UTC')}
-          options={TIMEZONES}
-          getOptionLabel={(tz) => TZ_LABELS.get(tz) ?? tz}
-          disableClearable
-          disabled={loading}
-          renderInput={(params) => <TextField {...params} label={t('events.timezone')} variant="filled" />}
-        />
+        </Field>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose} disabled={loading}>

@@ -31,6 +31,7 @@ import (
 	openeventor "github.com/openeventor/openeventor"
 	"github.com/openeventor/openeventor/internal/config"
 	"github.com/openeventor/openeventor/internal/database"
+	"github.com/openeventor/openeventor/internal/demo"
 	"github.com/openeventor/openeventor/internal/handlers"
 	"github.com/openeventor/openeventor/internal/sse"
 )
@@ -58,6 +59,14 @@ func main() {
 
 	if err := database.EnsureDefaultUser(db.SystemDB()); err != nil {
 		log.Fatalf("seed default user: %v", err)
+	}
+
+	// On a fresh install (no events yet), seed the demo event so the app opens
+	// with something to explore. Disable with SEED_DEMO=false.
+	if seed := os.Getenv("SEED_DEMO"); seed != "false" && seed != "0" {
+		if err := demo.SeedDemoEventIfEmpty(db); err != nil {
+			log.Printf("demo seed skipped: %v", err)
+		}
 	}
 
 	broker := sse.NewBroker()

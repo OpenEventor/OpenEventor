@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -30,22 +29,7 @@ import type {
   ProblemSubjectType,
   ProblemsResponse,
 } from '../../../api/types.ts';
-
-// Human-readable title for a problem, from a localized template keyed by `kind`.
-// Placeholders like {{courseName}} are substituted from `params`; the special
-// `{{competitor}}` falls back to a localized "Unnamed competitor".
-function problemTitle(
-  t: TFunction,
-  kind: string,
-  params?: Record<string, string>,
-): string {
-  const p = params ?? {};
-  const competitor =
-    p.competitor && p.competitor.trim()
-      ? p.competitor
-      : t('problems.unnamedCompetitor');
-  return t(`problems.kinds.${kind}`, { ...p, competitor, defaultValue: kind });
-}
+import { problemTitle } from './problemTitle.ts';
 
 const SEVERITY_META: Record<
   ProblemSeverity,
@@ -158,7 +142,13 @@ export function ProblemsPage() {
               return (
                 <ListItemButton
                   key={p.id}
-                  onClick={() => navigate(SUBJECT_ROUTE[p.subject.type])}
+                  onClick={() =>
+                    navigate(
+                      p.subject.type === 'competitor' && p.subject.id
+                        ? `../competitors/${p.subject.id}`
+                        : SUBJECT_ROUTE[p.subject.type],
+                    )
+                  }
                   sx={{ borderBottom: 1, borderColor: 'divider' }}
                 >
                   <ListItemIcon sx={{ minWidth: 40, color: meta.color }}>
