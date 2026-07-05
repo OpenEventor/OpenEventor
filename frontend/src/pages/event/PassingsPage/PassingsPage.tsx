@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   Alert,
@@ -11,7 +12,7 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  DeleteOutline as DeleteIcon,
+  DeleteOutlined as DeleteIcon,
   Search as SearchIcon,
   MoreHoriz as MoreHorizIcon,
 } from '@mui/icons-material';
@@ -22,19 +23,8 @@ import { api } from '../../../api/client.ts';
 import type { Passing } from '../../../api/types.ts';
 import { PassingDialog } from './PassingDialog.tsx';
 
-const COLUMNS: GridColDef[] = [
-  { field: 'card', headerName: 'Card', width: 120 },
-  { field: 'checkpoint', headerName: 'Checkpoint', width: 120 },
-  {
-    field: 'timestamp', headerName: 'Timestamp', flex: 1, minWidth: 180, type: 'number',
-    valueFormatter: (value: number) => value ? value.toFixed(2) : '—',
-  },
-  { field: 'enabled', headerName: 'Enabled', width: 80, type: 'boolean' },
-  { field: 'sortOrder', headerName: '#', width: 60, type: 'number' },
-  { field: 'source', headerName: 'Source', width: 120 },
-];
-
 export function PassingsPage() {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
 
   const [passings, setPassings] = useState<Passing[]>([]);
@@ -55,11 +45,11 @@ export function PassingsPage() {
       const data = await api.get<Passing[]>(`/api/events/${eventId}/passings`);
       setPassings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load passings');
+      setError(err instanceof Error ? err.message : t('passings.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -71,6 +61,18 @@ export function PassingsPage() {
     );
   }, [passings, searchText]);
 
+  const baseColumns: GridColDef[] = useMemo(() => [
+    { field: 'card', headerName: t('passings.card'), width: 120 },
+    { field: 'checkpoint', headerName: t('passings.checkpoint'), width: 120 },
+    {
+      field: 'timestamp', headerName: t('passings.timestamp'), flex: 1, minWidth: 180, type: 'number',
+      valueFormatter: (value: number) => value ? value.toFixed(2) : '—',
+    },
+    { field: 'enabled', headerName: t('passings.enabled'), width: 80, type: 'boolean' },
+    { field: 'sortOrder', headerName: '#', width: 60, type: 'number' },
+    { field: 'source', headerName: t('passings.source'), width: 120 },
+  ], [t]);
+
   const actionsColumn: GridColDef = useMemo(() => ({
     field: 'actions', headerName: '', width: 50, sortable: false, disableColumnMenu: true,
     renderCell: (params) => (
@@ -80,7 +82,7 @@ export function PassingsPage() {
     ),
   }), []);
 
-  const columns = useMemo(() => [...COLUMNS, actionsColumn], [actionsColumn]);
+  const columns = useMemo(() => [...baseColumns, actionsColumn], [baseColumns, actionsColumn]);
 
   const handleRowMenuClose = () => { setRowMenuAnchor(null); setRowMenuId(null); };
 
@@ -101,11 +103,11 @@ export function PassingsPage() {
 
   const rowMenu: DropDownMenuConfig = useMemo(() => ({
     items: [
-      { icon: <EditIcon />, text: 'Edit', action: handleEdit },
-      { icon: <DeleteIcon />, text: 'Delete', action: handleDelete },
+      { icon: <EditIcon />, text: t('common.edit'), action: handleEdit },
+      { icon: <DeleteIcon />, text: t('common.delete'), action: handleDelete },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [rowMenuId]);
+  }), [rowMenuId, t]);
 
   const handleSaved = () => { setDialogOpen(false); setEditingItem(null); fetchData(); };
 
@@ -113,18 +115,18 @@ export function PassingsPage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, flexWrap: 'wrap' }}>
         <TextField
-          size="small" variant="outlined" placeholder="Search..."
+          size="small" variant="outlined" placeholder={t('common.searchPlaceholder')}
           value={searchText} onChange={(e) => setSearchText(e.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> } }}
           sx={{ width: 220 }}
         />
         <Box sx={{ flexGrow: 1 }} />
         <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{ height: 40 }} onClick={() => { setEditingItem(null); setDialogOpen(true); }}>
-          Add new
+          {t('passings.addPassing')}
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>Retry</Button>}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>{t('common.retry')}</Button>}>{error}</Alert>}
 
       <DropDownMenu open={Boolean(rowMenuAnchor)} onClose={handleRowMenuClose} menu={rowMenu} anchorEl={rowMenuAnchor} width={180} />
       <PassingDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditingItem(null); }} onSaved={handleSaved} eventId={eventId || ''} passing={editingItem} />

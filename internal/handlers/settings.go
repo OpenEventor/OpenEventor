@@ -35,6 +35,16 @@ type updateSettingsRequest struct {
 	Settings map[string]string `json:"settings"`
 }
 
+// settingValue returns the value of the first present key in m.
+func settingValue(m map[string]string, keys ...string) (string, bool) {
+	for _, k := range keys {
+		if v, ok := m[k]; ok {
+			return v, true
+		}
+	}
+	return "", false
+}
+
 // UpdateSettings updates event settings and syncs cached fields to system.db.
 func (h *Handler) UpdateSettings(c *fiber.Ctx) error {
 	eventID := c.Params("eventId")
@@ -57,12 +67,13 @@ func (h *Handler) UpdateSettings(c *fiber.Ctx) error {
 		}
 	}
 
-	// Sync cached fields to system.db for fast listing.
+	// Sync cached fields to system.db for fast listing. Accept the canonical (iOS)
+	// keys, falling back to the legacy web keys.
 	sysDB := h.DB.SystemDB()
-	if name, ok := req.Settings["event_name"]; ok {
+	if name, ok := settingValue(req.Settings, "display_name", "event_name"); ok {
 		_, _ = sysDB.Exec("UPDATE events SET display_name = ? WHERE id = ?", name, eventID)
 	}
-	if date, ok := req.Settings["event_date"]; ok {
+	if date, ok := settingValue(req.Settings, "date", "event_date"); ok {
 		_, _ = sysDB.Exec("UPDATE events SET date = ? WHERE id = ?", date, eventID)
 	}
 

@@ -5,6 +5,7 @@ export interface EventItem {
   status: string;
   token?: string;
   createdAt: string;
+  modifiedAt?: string;
 }
 
 export interface Competitor {
@@ -62,6 +63,17 @@ export interface Course {
   updatedAt: string;
 }
 
+export interface Checkpoint {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  description: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Group {
   id: string;
   name: string;
@@ -101,6 +113,28 @@ export interface Team {
   updatedAt: string;
 }
 
+// Problems
+
+export type ProblemSeverity = 'info' | 'warning' | 'critical';
+export type ProblemSubjectType = 'event' | 'competitor' | 'course' | 'group' | 'card';
+
+export interface ProblemSubject {
+  type: ProblemSubjectType;
+  id?: string;
+}
+
+export interface Problem {
+  id: string;
+  severity: ProblemSeverity;
+  subject: ProblemSubject;
+  kind: string;
+  params?: Record<string, string>;
+}
+
+export interface ProblemsResponse {
+  problems: Problem[];
+}
+
 // Import types
 
 export interface ImportParseResponse {
@@ -125,4 +159,73 @@ export interface ImportExecuteResponse {
 export interface ImportFieldDef {
   field: string;
   label: string;
+}
+
+// Protocols (start-list / results documents, computed on the fly by the backend)
+
+export type ProtocolType = 'start' | 'results';
+export type ProtocolGrouping = 'group' | 'course';
+
+export interface ProtocolSplit {
+  checkpoint: string;
+  time: number; // ms from resolved start
+  leg: number;  // ms
+}
+
+export interface ProtocolRow {
+  competitorId: string;
+  place: number | null;      // null = unranked / non-finisher / start list
+  status: string;            // "OK"/"DSQ"/"DNF"/"DNS"/"NC"; "" for start
+  outOfRank: boolean;
+  isFinisher: boolean;
+  bib: string;
+  lastName: string;
+  firstName: string;
+  name: string;              // "Last First"
+  groupName: string;
+  teamName: string;
+  country: string;
+  rank: string;
+  comment: string;
+  birthYear: number;         // 0 = unknown
+  startTime: number;         // unix seconds; 0 = unknown
+  totalTime: number | null;      // ms; finishers only
+  referenceTime: number | null;  // ms; non-finisher's finish-for-reference
+  gapToLeader: number | null;    // ms; > 0 only
+  gapToPrev: number | null;      // ms; > 0 only
+  points: number | null;         // competitor rating; null when 0
+  splits?: ProtocolSplit[];
+}
+
+export interface ProtocolSection {
+  id: string;
+  title: string;
+  subtitle?: string;
+  rows: ProtocolRow[];
+}
+
+export interface ProtocolOptions {
+  showTeam: boolean;
+  showCountry: boolean;
+  showStartTime: boolean;
+  showRank: boolean;
+  showComment: boolean;
+  showGapToLeader: boolean;
+  showGapToPrevious: boolean;
+  usePoints: boolean;
+  printDsq: boolean;
+  printDnf: boolean;
+  printDns: boolean;
+  pageBreakPerSection: boolean;
+}
+
+export interface ProtocolDocument {
+  type: ProtocolType;
+  grouping: ProtocolGrouping;
+  generatedAt: string;       // RFC3339 UTC
+  columns: string[];         // ordered active column keys
+  showGroupColumn: boolean;
+  showPointsColumn: boolean;
+  options: ProtocolOptions;
+  sections: ProtocolSection[];
 }

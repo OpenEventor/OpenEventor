@@ -1,33 +1,38 @@
 import type { ImportFieldDef } from '../../api/types';
 
-/** Fields available for competitor import mapping. */
+/**
+ * Fields available for competitor import mapping.
+ * `label` holds an i18n key resolved at the render site with `t(label)` — the
+ * `field` identifiers are the stable keys used for CSV column matching and the
+ * import API, and must not change.
+ */
 export const COMPETITOR_FIELDS: ImportFieldDef[] = [
-  { field: 'bib', label: 'Bib' },
-  { field: 'lastName', label: 'Last Name' },
-  { field: 'firstName', label: 'First Name' },
-  { field: 'middleName', label: 'Middle Name' },
-  { field: 'lastNameInt', label: 'Last Name (Int)' },
-  { field: 'firstNameInt', label: 'First Name (Int)' },
-  { field: 'card1', label: 'Card 1' },
-  { field: 'card2', label: 'Card 2' },
-  { field: 'gender', label: 'Gender' },
-  { field: 'birthDate', label: 'Birth Date' },
-  { field: 'birthYear', label: 'Birth Year' },
-  { field: 'rank', label: 'Rank' },
-  { field: 'rating', label: 'Rating' },
-  { field: 'country', label: 'Country' },
-  { field: 'region', label: 'Region' },
-  { field: 'city', label: 'City' },
-  { field: 'phone', label: 'Phone' },
-  { field: 'email', label: 'Email' },
-  { field: 'startTime', label: 'Start Time' },
-  { field: 'timeAdjustment', label: 'Time Adjustment' },
-  { field: 'entryNumber', label: 'Entry Number' },
-  { field: 'price', label: 'Price' },
-  { field: 'notes', label: 'Notes' },
-  { field: 'groupId', label: 'Group' },
-  { field: 'courseId', label: 'Course' },
-  { field: 'teamId', label: 'Team' },
+  { field: 'bib', label: 'import.fields.bib' },
+  { field: 'lastName', label: 'import.fields.lastName' },
+  { field: 'firstName', label: 'import.fields.firstName' },
+  { field: 'middleName', label: 'import.fields.middleName' },
+  { field: 'lastNameInt', label: 'import.fields.lastNameInt' },
+  { field: 'firstNameInt', label: 'import.fields.firstNameInt' },
+  { field: 'card1', label: 'import.fields.card1' },
+  { field: 'card2', label: 'import.fields.card2' },
+  { field: 'gender', label: 'import.fields.gender' },
+  { field: 'birthDate', label: 'import.fields.birthDate' },
+  { field: 'birthYear', label: 'import.fields.birthYear' },
+  { field: 'rank', label: 'import.fields.rank' },
+  { field: 'rating', label: 'import.fields.rating' },
+  { field: 'country', label: 'import.fields.country' },
+  { field: 'region', label: 'import.fields.region' },
+  { field: 'city', label: 'import.fields.city' },
+  { field: 'phone', label: 'import.fields.phone' },
+  { field: 'email', label: 'import.fields.email' },
+  { field: 'startTime', label: 'import.fields.startTime' },
+  { field: 'timeAdjustment', label: 'import.fields.timeAdjustment' },
+  { field: 'entryNumber', label: 'import.fields.entryNumber' },
+  { field: 'price', label: 'import.fields.price' },
+  { field: 'notes', label: 'import.fields.notes' },
+  { field: 'groupId', label: 'import.fields.groupId' },
+  { field: 'courseId', label: 'import.fields.courseId' },
+  { field: 'teamId', label: 'import.fields.teamId' },
 ];
 
 /** Aliases for auto-detection: lowercase alias → field name. */

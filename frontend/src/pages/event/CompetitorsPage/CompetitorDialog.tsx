@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -28,7 +30,7 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
 import { api } from "../../../api/client.ts";
-import type { Competitor, Passing, Course, Group } from "../../../api/types.ts";
+import type { Competitor, Passing, Course, Group, Team } from "../../../api/types.ts";
 import {
   computeDeltas,
 } from "../../../components/PassingBlock/PassingBlock.tsx";
@@ -73,57 +75,61 @@ interface CompetitorFormData {
   notes: string;
 }
 
-const schema = Joi.object<CompetitorFormData>({
-  lastName: Joi.string()
-    .required()
-    .messages({ "string.empty": "Last name is required" }),
-  firstName: Joi.string().allow("").optional(),
-  middleName: Joi.string().allow("").optional(),
-  firstNameInt: Joi.string().allow("").optional(),
-  lastNameInt: Joi.string().allow("").optional(),
-  bib: Joi.string().allow("").optional(),
-  card1: Joi.string().allow("").optional(),
-  card2: Joi.string().allow("").optional(),
-  teamId: Joi.string().allow("").optional(),
-  groupId: Joi.string().allow("").optional(),
-  courseId: Joi.string().allow("").optional(),
-  gender: Joi.string().allow("", "M", "F").optional(),
-  birthDate: Joi.string()
-    .allow("")
-    .pattern(/^(\d{2}\.\d{2})?$/)
-    .optional()
-    .messages({
-      "string.pattern.base": "Format: DD.MM",
+type TFn = (key: string, options?: Record<string, unknown>) => string;
+
+function buildSchema(t: TFn) {
+  return Joi.object<CompetitorFormData>({
+    lastName: Joi.string()
+      .required()
+      .messages({ "string.empty": t("competitors.validation.lastNameRequired") }),
+    firstName: Joi.string().allow("").optional(),
+    middleName: Joi.string().allow("").optional(),
+    firstNameInt: Joi.string().allow("").optional(),
+    lastNameInt: Joi.string().allow("").optional(),
+    bib: Joi.string().allow("").optional(),
+    card1: Joi.string().allow("").optional(),
+    card2: Joi.string().allow("").optional(),
+    teamId: Joi.string().allow("").optional(),
+    groupId: Joi.string().allow("").optional(),
+    courseId: Joi.string().allow("").optional(),
+    gender: Joi.string().allow("", "M", "F").optional(),
+    birthDate: Joi.string()
+      .allow("")
+      .pattern(/^(\d{2}\.\d{2})?$/)
+      .optional()
+      .messages({
+        "string.pattern.base": t("competitors.validation.birthDateFormat"),
+      }),
+    birthYear: Joi.string()
+      .allow("")
+      .pattern(/^(\d{4})?$/)
+      .optional()
+      .messages({
+        "string.pattern.base": t("competitors.validation.birthYearFormat"),
+      }),
+    rank: Joi.string().allow("").optional(),
+    rating: Joi.alternatives()
+      .try(Joi.number().min(0), Joi.string().valid(""))
+      .optional(),
+    country: Joi.string().allow("").optional(),
+    region: Joi.string().allow("").optional(),
+    city: Joi.string().allow("").optional(),
+    phone: Joi.string().allow("").optional(),
+    email: Joi.string().allow("").email({ tlds: false }).optional().messages({
+      "string.email": t("competitors.validation.emailInvalid"),
     }),
-  birthYear: Joi.string()
-    .allow("")
-    .pattern(/^(\d{4})?$/)
-    .optional()
-    .messages({
-      "string.pattern.base": "Format: YYYY",
-    }),
-  rank: Joi.string().allow("").optional(),
-  rating: Joi.alternatives()
-    .try(Joi.number().min(0), Joi.string().valid(""))
-    .optional(),
-  country: Joi.string().allow("").optional(),
-  region: Joi.string().allow("").optional(),
-  city: Joi.string().allow("").optional(),
-  phone: Joi.string().allow("").optional(),
-  email: Joi.string().allow("").email({ tlds: false }).optional().messages({
-    "string.email": "Invalid email format",
-  }),
-  startTime: Joi.number().min(0).optional(),
-  timeAdjustment: Joi.alternatives()
-    .try(Joi.number().integer(), Joi.string().valid(""))
-    .optional(),
-  dsq: Joi.number().valid(0, 1).optional(),
-  dsqDescription: Joi.string().allow("").optional(),
-  dns: Joi.number().valid(0, 1).optional(),
-  dnf: Joi.number().valid(0, 1).optional(),
-  outOfRank: Joi.number().valid(0, 1).optional(),
-  notes: Joi.string().allow("").optional(),
-});
+    startTime: Joi.number().min(0).optional(),
+    timeAdjustment: Joi.alternatives()
+      .try(Joi.number().integer(), Joi.string().valid(""))
+      .optional(),
+    dsq: Joi.number().valid(0, 1).optional(),
+    dsqDescription: Joi.string().allow("").optional(),
+    dns: Joi.number().valid(0, 1).optional(),
+    dnf: Joi.number().valid(0, 1).optional(),
+    outOfRank: Joi.number().valid(0, 1).optional(),
+    notes: Joi.string().allow("").optional(),
+  });
+}
 
 const DEFAULT_VALUES: CompetitorFormData = {
   bib: "",
@@ -344,9 +350,10 @@ function ViewField({
       {secondary && (
         <Typography
           variant="body2"
-          color="text.secondary"
-          sx={{ fontSize: "0.85rem" }}
-        >
+          sx={{
+            color: "text.secondary",
+            fontSize: "0.85rem"
+          }}>
           {secondary}
         </Typography>
       )}
@@ -372,6 +379,7 @@ function PassingsStrip({
   ) => void;
   onAfterToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const deltas = computeDeltas(passings, startTimestamp);
 
   // GapIndicator total width: 6px + 2px margin each side = 10px
@@ -379,7 +387,7 @@ function PassingsStrip({
 
   return (
     <Stack spacing={0.5}>
-      <ViewLabel>Passings ({passings.length})</ViewLabel>
+      <ViewLabel>{t("competitors.view.passings", { count: passings.length })}</ViewLabel>
       <Box
         sx={{
           display: "flex",
@@ -438,6 +446,7 @@ function ViewContent({
   groups: Map<string, Group>;
   courses: Map<string, Course>;
 }) {
+  const { t } = useTranslation();
   const c = competitor;
   const [editorState, setEditorState] = useState<{
     mode: "edit" | "add-before" | "add-after";
@@ -451,7 +460,11 @@ function ViewContent({
     .join(" ");
   const intName = [c.lastNameInt, c.firstNameInt].filter(Boolean).join(" ");
   const genderLabel =
-    c.gender === "M" ? " (male)" : c.gender === "F" ? " (female)" : "";
+    c.gender === "M"
+      ? t("competitors.view.genderMale")
+      : c.gender === "F"
+        ? t("competitors.view.genderFemale")
+        : "";
   const locationParts = [c.country, c.region, c.city].filter(Boolean);
   const hasStatuses =
     c.dsq === 1 || c.dns === 1 || c.dnf === 1 || c.outOfRank === 1;
@@ -470,12 +483,16 @@ function ViewContent({
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={2}
-          alignItems="flex-start"
+          sx={{
+            alignItems: "flex-start"
+          }}
         >
           {/* Left sub-column: Bib, statuses, name, birth, rank, distance, group, team */}
           <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
             {/* Bib + statuses */}
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <Stack direction="row" spacing={1.5} sx={{
+              alignItems: "flex-start"
+            }}>
               {c.bib && (
                 <Typography
                   sx={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1 }}
@@ -540,7 +557,7 @@ function ViewContent({
                         color: "error.main",
                       }}
                     >
-                      Out of Rank
+                      {t("competitors.status.outOfRank")}
                     </Typography>
                   )}
                 </Stack>
@@ -555,9 +572,10 @@ function ViewContent({
               {(intName || genderLabel) && (
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ fontSize: "0.9rem" }}
-                >
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.9rem"
+                  }}>
                   {intName}
                   {genderLabel}
                 </Typography>
@@ -568,33 +586,34 @@ function ViewContent({
             {c.birthDate || c.birthYear || c.rank || c.rating ? (
               <Stack direction="row" spacing={3}>
                 <ViewField
-                  label="Birth date"
+                  label={t("competitors.fields.birthDate")}
                   value={
                     c.birthDate || (c.birthYear ? String(c.birthYear) : null)
                   }
                 />
-                <ViewField label="Rank" value={c.rank} />
-                <ViewField label="Rating" value={c.rating || null} />
+                <ViewField label={t("competitors.fields.rank")} value={c.rank} />
+                <ViewField label={t("competitors.fields.rating")} value={c.rating || null} />
               </Stack>
             ) : null}
 
             {/* Distance */}
-            <ViewField label="Distance" value={c.courseId} />
+            <ViewField label={t("competitors.fields.course")} value={c.courseId} />
 
             {/* Group */}
-            <ViewField label="Group" value={c.groupId} />
+            <ViewField label={t("competitors.fields.group")} value={c.groupId} />
 
             {/* Team */}
             {(c.teamId || locationParts.length > 0) && (
               <Stack spacing={0}>
-                <ViewLabel>Team</ViewLabel>
+                <ViewLabel>{t("competitors.fields.team")}</ViewLabel>
                 {c.teamId && <ViewValue>{c.teamId}</ViewValue>}
                 {locationParts.length > 0 && (
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ fontSize: "0.85rem" }}
-                  >
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.85rem"
+                    }}>
                     {locationParts.join(", ")}
                   </Typography>
                 )}
@@ -606,12 +625,15 @@ function ViewContent({
           {c.startTime > 0 || c.timeAdjustment ? (
             <Stack
               spacing={1}
-              alignItems={{ xs: "flex-start", sm: "flex-end" }}
-              sx={{ flexShrink: 0 }}
-            >
+              sx={{
+                alignItems: { xs: "flex-start", sm: "flex-end" },
+                flexShrink: 0
+              }}>
               {c.startTime > 0 && (
-                <Stack alignItems={{ xs: "flex-start", sm: "flex-end" }}>
-                  <ViewLabel>Start time</ViewLabel>
+                <Stack sx={{
+                  alignItems: { xs: "flex-start", sm: "flex-end" }
+                }}>
+                  <ViewLabel>{t("competitors.fields.startTime")}</ViewLabel>
                   <Typography
                     sx={{
                       fontSize: "1.5rem",
@@ -624,8 +646,10 @@ function ViewContent({
                 </Stack>
               )}
               {c.timeAdjustment ? (
-                <Stack alignItems={{ xs: "flex-start", sm: "flex-end" }}>
-                  <ViewLabel>Adjust time:</ViewLabel>
+                <Stack sx={{
+                  alignItems: { xs: "flex-start", sm: "flex-end" }
+                }}>
+                  <ViewLabel>{t("competitors.view.adjustTime")}</ViewLabel>
                   <Typography
                     sx={{
                       fontSize: "1.3rem",
@@ -644,33 +668,36 @@ function ViewContent({
         {/* Phone + Email (below the two sub-columns) */}
         {(c.phone || c.email) && (
           <Stack direction="row" spacing={3}>
-            <ViewField label="Phone" value={c.phone} />
-            <ViewField label="Email" value={c.email} />
+            <ViewField label={t("competitors.fields.phone")} value={c.phone} />
+            <ViewField label={t("competitors.fields.email")} value={c.email} />
           </Stack>
         )}
 
         {/* Notes */}
         {c.notes && (
           <Stack spacing={0}>
-            <ViewLabel>Notes</ViewLabel>
+            <ViewLabel>{t("common.notes")}</ViewLabel>
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ fontSize: "0.9rem", whiteSpace: "pre-wrap" }}
-            >
+              sx={{
+                color: "text.secondary",
+                fontSize: "0.9rem",
+                whiteSpace: "pre-wrap"
+              }}>
               {c.notes}
             </Typography>
           </Stack>
         )}
       </Stack>
-
       {/* ── Right Column ── */}
       <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
         {/* Cards */}
         {(c.card1 || c.card2) && (
           <Stack spacing={0.5}>
-            <ViewLabel>Cards</ViewLabel>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <ViewLabel>{t("competitors.fields.cards")}</ViewLabel>
+            <Stack direction="row" spacing={1} sx={{
+              flexWrap: "wrap"
+            }}>
               {c.card1 && <Chip label={c.card1} size="small" color="success" />}
               {c.card2 && <Chip label={c.card2} size="small" color="success" />}
             </Stack>
@@ -696,13 +723,13 @@ function ViewContent({
         )}
         {withPassings && !passingsLoading && passings.length === 0 && card && (
           <Stack spacing={0.5}>
-            <ViewLabel>Passings (0)</ViewLabel>
+            <ViewLabel>{t("competitors.view.passings", { count: 0 })}</ViewLabel>
             <Button
               size="small"
               variant="outlined"
               onClick={() => setEditorState({ mode: "add-before", index: 0 })}
             >
-              Add passing
+              {t("competitors.addPassing")}
             </Button>
           </Stack>
         )}
@@ -728,15 +755,62 @@ function ViewContent({
 
 const V = "filled" as const;
 
+interface PickerOption {
+  id: string;
+  name: string;
+}
+
+// Relational picker: displays the entity name, stores its id ("" = none).
+// Falls back to a synthetic option so a stale/unknown id is never silently lost.
+function EntityPicker({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (id: string) => void;
+  options: PickerOption[];
+  disabled?: boolean;
+}) {
+  const opts =
+    value && !options.some((o) => o.id === value)
+      ? [...options, { id: value, name: value }]
+      : options;
+  const selected = opts.find((o) => o.id === value) ?? null;
+  return (
+    <Autocomplete
+      size="small"
+      options={opts}
+      getOptionLabel={(o) => o.name}
+      isOptionEqualToValue={(o, v) => o.id === v.id}
+      value={selected}
+      onChange={(_, v) => onChange(v ? v.id : "")}
+      disabled={disabled}
+      fullWidth
+      renderInput={(params) => <TextField {...params} variant={V} label={label} />}
+    />
+  );
+}
+
 function EditForm({
   control,
   errors,
   saving,
+  groupOptions,
+  courseOptions,
+  teamOptions,
 }: {
   control: ReturnType<typeof useForm<CompetitorFormData>>["control"];
   errors: ReturnType<typeof useForm<CompetitorFormData>>["formState"]["errors"];
   saving: boolean;
+  groupOptions: PickerOption[];
+  courseOptions: PickerOption[];
+  teamOptions: PickerOption[];
 }) {
+  const { t } = useTranslation();
   const { date: baseDate, timezone } = useEvent();
   return (
     <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
@@ -751,7 +825,7 @@ function EditForm({
               <TextField
                 {...field}
                 variant={V}
-                label="Bib"
+                label={t("competitors.fields.bib")}
                 size="small"
                 disabled={saving}
               />
@@ -769,7 +843,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Last name"
+                  label={t("competitors.fields.lastName")}
                   required
                   fullWidth
                   size="small"
@@ -786,7 +860,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="First name"
+                  label={t("competitors.fields.firstName")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -802,7 +876,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Gender"
+                  label={t("competitors.fields.gender")}
                   size="small"
                   select
                   disabled={saving}
@@ -832,9 +906,9 @@ function EditForm({
                     field.onChange(v);
                   }}
                   variant={V}
-                  label="Birth date"
+                  label={t("competitors.fields.birthDate")}
                   size="small"
-                  placeholder="DD.MM"
+                  placeholder={t("competitors.placeholders.birthDate")}
                   inputMode="numeric"
                   error={!!errors.birthDate}
                   helperText={errors.birthDate?.message as string}
@@ -854,9 +928,9 @@ function EditForm({
                     field.onChange(v);
                   }}
                   variant={V}
-                  label="Birth year"
+                  label={t("competitors.fields.birthYear")}
                   size="small"
-                  placeholder="YYYY"
+                  placeholder={t("competitors.placeholders.birthYear")}
                   inputMode="numeric"
                   error={!!errors.birthYear}
                   helperText={errors.birthYear?.message as string}
@@ -875,17 +949,16 @@ function EditForm({
 
         {/* Group & Distance */}
         <Stack spacing={1}>
-          <SectionTitle>Group and distance</SectionTitle>
+          <SectionTitle>{t("competitors.sections.groupAndDistance")}</SectionTitle>
           <Controller
             name="groupId"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                variant={V}
-                label="Group"
-                fullWidth
-                size="small"
+              <EntityPicker
+                label={t("competitors.fields.group")}
+                value={field.value}
+                onChange={field.onChange}
+                options={groupOptions}
                 disabled={saving}
               />
             )}
@@ -894,12 +967,11 @@ function EditForm({
             name="courseId"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                variant={V}
-                label="Distance (redefined)"
-                fullWidth
-                size="small"
+              <EntityPicker
+                label={t("competitors.fields.courseRedefined")}
+                value={field.value}
+                onChange={field.onChange}
+                options={courseOptions}
                 disabled={saving}
               />
             )}
@@ -907,7 +979,7 @@ function EditForm({
         </Stack>
 
         {/* More — collapsible */}
-        <CollapsibleSection title="More">
+        <CollapsibleSection title={t("common.more")}>
           <Stack spacing={1}>
             <Controller
               name="middleName"
@@ -916,7 +988,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Middle name"
+                  label={t("competitors.fields.middleName")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -931,7 +1003,7 @@ function EditForm({
                   <TextField
                     {...field}
                     variant={V}
-                    label="Last name (int)"
+                    label={t("competitors.fields.lastNameInt")}
                     fullWidth
                     size="small"
                     disabled={saving}
@@ -945,7 +1017,7 @@ function EditForm({
                   <TextField
                     {...field}
                     variant={V}
-                    label="First name (int)"
+                    label={t("competitors.fields.firstNameInt")}
                     fullWidth
                     size="small"
                     disabled={saving}
@@ -961,7 +1033,7 @@ function EditForm({
                   <TextField
                     {...field}
                     variant={V}
-                    label="Rank"
+                    label={t("competitors.fields.rank")}
                     fullWidth
                     size="small"
                     disabled={saving}
@@ -975,7 +1047,7 @@ function EditForm({
                   <TextField
                     {...field}
                     variant={V}
-                    label="Rating"
+                    label={t("competitors.fields.rating")}
                     fullWidth
                     size="small"
                     type="number"
@@ -986,7 +1058,9 @@ function EditForm({
                 )}
               />
             </Stack>
-            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+            <Stack direction="row" spacing={0.5} sx={{
+              flexWrap: "wrap"
+            }}>
               <Controller
                 name="dsq"
                 control={control}
@@ -1059,7 +1133,7 @@ function EditForm({
                         disabled={saving}
                       />
                     }
-                    label="Out of rank"
+                    label={t("competitors.fields.outOfRank")}
                   />
                 )}
               />
@@ -1071,7 +1145,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="DSQ description"
+                  label={t("competitors.fields.dsqDescription")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1081,7 +1155,6 @@ function EditForm({
           </Stack>
         </CollapsibleSection>
       </Stack>
-
       {/* ── Right Column: Competition ── */}
       <Stack spacing={2} sx={{ flex: 1, minWidth: 0 }}>
         {/* Start time — full width, no section title */}
@@ -1095,7 +1168,7 @@ function EditForm({
               timezone={timezone}
               onChange={(ts) => field.onChange(ts ?? 0)}
               variant="filled"
-              label="Start time (redefined)"
+              label={t("competitors.fields.startTimeRedefined")}
               size="small"
               disabled={saving}
               fullWidth
@@ -1114,7 +1187,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Card 1"
+                  label={t("competitors.fields.card1")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1128,7 +1201,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Card 2"
+                  label={t("competitors.fields.card2")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1140,18 +1213,17 @@ function EditForm({
 
         {/* Team */}
         <Stack spacing={1}>
-          <SectionTitle>Team</SectionTitle>
+          <SectionTitle>{t("competitors.fields.team")}</SectionTitle>
           <Stack direction="row" spacing={1}>
             <Controller
               name="teamId"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  variant={V}
-                  label="Team"
-                  fullWidth
-                  size="small"
+                <EntityPicker
+                  label={t("competitors.fields.team")}
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={teamOptions}
                   disabled={saving}
                 />
               )}
@@ -1179,7 +1251,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Region"
+                  label={t("competitors.fields.region")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1193,7 +1265,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="City"
+                  label={t("competitors.fields.city")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1205,7 +1277,7 @@ function EditForm({
 
         {/* Contacts */}
         <Stack spacing={1}>
-          <SectionTitle>Contacts</SectionTitle>
+          <SectionTitle>{t("competitors.sections.contacts")}</SectionTitle>
           <Stack direction="row" spacing={1}>
             <Controller
               name="phone"
@@ -1214,7 +1286,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Phone"
+                  label={t("competitors.fields.phone")}
                   fullWidth
                   size="small"
                   disabled={saving}
@@ -1228,7 +1300,7 @@ function EditForm({
                 <TextField
                   {...field}
                   variant={V}
-                  label="Email"
+                  label={t("competitors.fields.email")}
                   fullWidth
                   size="small"
                   error={!!errors.email}
@@ -1245,7 +1317,7 @@ function EditForm({
               <TextField
                 {...field}
                 variant={V}
-                label="Notes"
+                label={t("common.notes")}
                 fullWidth
                 size="small"
                 multiline
@@ -1274,6 +1346,8 @@ export function CompetitorDialog({
   competitor,
   withPassings = true,
 }: CompetitorDialogProps) {
+  const { t } = useTranslation();
+  const schema = useMemo(() => buildSchema(t), [t]);
   const isView = mode === "view";
   const isEdit = mode === "edit";
   const [saving, setSaving] = useState(false);
@@ -1282,6 +1356,11 @@ export function CompetitorDialog({
   const [passingsLoading, setPassingsLoading] = useState(false);
   const [groupsMap, setGroupsMap] = useState<Map<string, Group>>(new Map());
   const [coursesMap, setCoursesMap] = useState<Map<string, Course>>(new Map());
+
+  // Relational picker options for the edit/create form.
+  const [groupOptions, setGroupOptions] = useState<Group[]>([]);
+  const [courseOptions, setCourseOptions] = useState<Course[]>([]);
+  const [teamOptions, setTeamOptions] = useState<Team[]>([]);
 
   // Fresh competitor data fetched from API on open (view mode).
   const [fetchedCompetitor, setFetchedCompetitor] = useState<Competitor | null>(
@@ -1324,10 +1403,12 @@ export function CompetitorDialog({
       .catch((err) => {
         setFetchedCompetitor(null);
         setCompetitorError(
-          err instanceof Error ? err.message : "Failed to load",
+          err instanceof Error ? err.message : t("competitors.errors.loadOne"),
         );
       })
       .finally(() => setCompetitorLoading(false));
+    // `t` intentionally omitted: a language switch must not re-fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isView, resolvedId, eventId]);
 
   useEffect(() => {
@@ -1348,13 +1429,15 @@ export function CompetitorDialog({
           setError(
             err instanceof Error
               ? err.message
-              : "Failed to load competitor data",
+              : t("competitors.errors.loadData"),
           );
         })
         .finally(() => setEditLoading(false));
     } else {
       reset(competitor ? competitorToForm(competitor) : DEFAULT_VALUES);
     }
+    // `t` intentionally omitted: a language switch must not re-fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, resolvedId, eventId, competitor, reset, isView]);
 
   const fetchPassings = useCallback(() => {
@@ -1400,6 +1483,24 @@ export function CompetitorDialog({
       });
   }, [open, isView, withPassings, eventId]);
 
+  // Load relational picker options (groups/courses/teams) for edit/create.
+  useEffect(() => {
+    if (!open || isView || !eventId) return;
+    Promise.all([
+      api.get<Group[]>(`/api/events/${eventId}/groups`),
+      api.get<Course[]>(`/api/events/${eventId}/courses`),
+      api.get<Team[]>(`/api/events/${eventId}/teams`),
+    ])
+      .then(([groups, courses, teams]) => {
+        setGroupOptions(groups);
+        setCourseOptions(courses);
+        setTeamOptions(teams);
+      })
+      .catch(() => {
+        /* non-critical */
+      });
+  }, [open, isView, eventId]);
+
   const onSubmit = async (data: CompetitorFormData) => {
     setSaving(true);
     setError(null);
@@ -1415,7 +1516,7 @@ export function CompetitorDialog({
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : t("competitors.errors.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -1429,14 +1530,14 @@ export function CompetitorDialog({
   const competitorName = viewCompetitor
     ? [viewCompetitor.lastName, viewCompetitor.firstName]
         .filter(Boolean)
-        .join(" ") || "Competitor"
+        .join(" ") || t("competitors.dialog.competitor")
     : "";
 
   const title = isView
-    ? competitorName || "Competitor"
+    ? competitorName || t("competitors.dialog.competitor")
     : isEdit
-      ? "Edit competitor"
-      : "New competitor";
+      ? t("competitors.dialog.editTitle")
+      : t("competitors.dialog.createTitle");
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth scroll="paper">
@@ -1460,7 +1561,7 @@ export function CompetitorDialog({
           {isView ? (
             onEditClick && (
               <Button size="small" color="inherit" onClick={onEditClick}>
-                Edit
+                {t("common.edit")}
               </Button>
             )
           ) : (
@@ -1526,14 +1627,21 @@ export function CompetitorDialog({
                 {error}
               </Alert>
             )}
-            <EditForm control={control} errors={errors} saving={saving} />
+            <EditForm
+              control={control}
+              errors={errors}
+              saving={saving}
+              groupOptions={groupOptions}
+              courseOptions={courseOptions}
+              teamOptions={teamOptions}
+            />
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 1.5 }}>
             <Button onClick={handleClose} disabled={saving}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button variant="contained" type="submit" disabled={saving}>
-              {saving ? "Saving..." : isEdit ? "Save" : "Create"}
+              {saving ? t("common.saving") : isEdit ? t("common.save") : t("common.create")}
             </Button>
           </DialogActions>
         </form>

@@ -18,7 +18,7 @@ func (h *Handler) ListEvents(c *fiber.Ctx) error {
 
 	db := h.DB.SystemDB()
 	rows, err := db.Query(
-		`SELECT e.id, e.display_name, e.date, e.status, COALESCE(e.token, ''), e.created_at
+		`SELECT e.id, e.filename, e.display_name, e.date, e.status, COALESCE(e.token, ''), e.created_at
 		 FROM events e
 		 JOIN event_access ea ON e.id = ea.event_id
 		 WHERE ea.user_id = ?
@@ -30,11 +30,16 @@ func (h *Handler) ListEvents(c *fiber.Ctx) error {
 	}
 	defer rows.Close()
 
+	dataDir := h.DB.DataDir()
 	events := make([]models.Event, 0)
 	for rows.Next() {
 		var ev models.Event
-		if err := rows.Scan(&ev.ID, &ev.DisplayName, &ev.Date, &ev.Status, &ev.Token, &ev.CreatedAt); err != nil {
+		if err := rows.Scan(&ev.ID, &ev.Filename, &ev.DisplayName, &ev.Date, &ev.Status, &ev.Token, &ev.CreatedAt); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "scan error"})
+		}
+		// Surface the .db file's modification time as the "modified" discriminator.
+		if info, statErr := os.Stat(filepath.Join(dataDir, ev.Filename)); statErr == nil {
+			ev.ModifiedAt = info.ModTime().UTC().Format(time.RFC3339)
 		}
 		events = append(events, ev)
 	}
@@ -98,11 +103,14 @@ func (h *Handler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create event database"})
 	}
 
-	// Store event name, date, timezone, and token in event settings.
-	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_name', ?)", req.DisplayName)
-	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_date', ?)", req.Date)
-	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_timezone', ?)", req.Timezone)
-	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_token', ?)", eventToken)
+	// Store event metadata in event settings using the canonical (iOS) key
+	// vocabulary, so the .db file is interchangeable with the mobile app.
+	// oe_format is the "this is an OpenEventor DB" marker used by import validation.
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('display_name', ?)", req.DisplayName)
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('date', ?)", req.Date)
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('timezone', ?)", req.Timezone)
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('token', ?)", eventToken)
+	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('oe_format', 'openeventor/1')")
 
 	return c.Status(fiber.StatusCreated).JSON(models.Event{
 		ID:          id,
@@ -181,17 +189,19 @@ func (h *Handler) ReloadEvents(c *fiber.Ctx) error {
 			continue // Skip unreadable files.
 		}
 
+		// Read canonical (iOS) keys, falling back to the legacy web keys so older
+		// web-created DBs still adopt cleanly.
 		var displayName, date, eventToken string
-		_ = eventDB.QueryRow("SELECT value FROM settings WHERE key = 'event_name'").Scan(&displayName)
-		_ = eventDB.QueryRow("SELECT value FROM settings WHERE key = 'event_date'").Scan(&date)
-		_ = eventDB.QueryRow("SELECT value FROM settings WHERE key = 'event_token'").Scan(&eventToken)
+		_ = eventDB.QueryRow(`SELECT COALESCE((SELECT value FROM settings WHERE key='display_name'),(SELECT value FROM settings WHERE key='event_name'),'')`).Scan(&displayName)
+		_ = eventDB.QueryRow(`SELECT COALESCE((SELECT value FROM settings WHERE key='date'),(SELECT value FROM settings WHERE key='event_date'),'')`).Scan(&date)
+		_ = eventDB.QueryRow(`SELECT COALESCE((SELECT value FROM settings WHERE key='token'),(SELECT value FROM settings WHERE key='event_token'),'')`).Scan(&eventToken)
 		if displayName == "" {
 			displayName = name // Fallback to filename.
 		}
 		// Generate token if the event DB doesn't have one.
 		if eventToken == "" {
 			eventToken, _ = generateEventToken()
-			_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('event_token', ?)", eventToken)
+			_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('token', ?)", eventToken)
 		}
 
 		now := time.Now().UTC().Format(time.RFC3339)

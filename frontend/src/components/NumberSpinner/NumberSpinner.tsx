@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { NumberField as BaseNumberField } from "@base-ui/react/number-field";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -22,6 +23,7 @@ const NumberSpinner = ({
   size = "medium",
   ...other
 }: NumberSpinnerProps) => {
+  const { t } = useTranslation();
   let id = React.useId();
   if (idProp) {
     id = idProp;
@@ -85,7 +87,7 @@ const NumberSpinner = ({
           render={
             <Button
               variant="outlined"
-              aria-label="Decrease"
+              aria-label={t("components.decrease")}
               size={size}
               sx={{
                 borderTopRightRadius: 0,
@@ -134,7 +136,7 @@ const NumberSpinner = ({
           render={
             <Button
               variant="outlined"
-              aria-label="Increase"
+              aria-label={t("components.increase")}
               size={size}
               sx={{
                 borderTopLeftRadius: 0,

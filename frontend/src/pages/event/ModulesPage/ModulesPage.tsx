@@ -1,13 +1,18 @@
 import { Box, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 export function ModulesPage() {
+  const { t } = useTranslation();
+
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        All Modules
+        {t('modules.title')}
       </Typography>
-      <Typography color="text.secondary">
-        Overview of all event modules will appear here.
+      <Typography sx={{
+        color: "text.secondary"
+      }}>
+        {t('modules.overview')}
       </Typography>
     </Box>
   );

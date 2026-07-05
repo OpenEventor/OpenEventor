@@ -4,7 +4,9 @@
 *.dll
 *.so
 *.dylib
-server
+# NOTE: anchored to repo root so it never matches cmd/server/ (which was
+# previously swallowed by a bare "server" rule, losing the server entrypoint).
+/server
 
 # Go build/test
 *.test

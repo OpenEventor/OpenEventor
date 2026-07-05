@@ -1,4 +1,5 @@
 import { Stack, Typography, Button } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type { FC } from "react";
 
 export interface DropDownMenuConfirmProps {
@@ -22,18 +23,18 @@ export interface DropDownMenuConfirmI18n {
   confirmLabel: string;
 }
 
-const DEFAULT_I18N: DropDownMenuConfirmI18n = {
-  cancelLabel: "Cancel",
-  confirmLabel: "Confirm",
-};
-
 const DropDownMenuConfirm: FC<DropDownMenuConfirmProps> = ({
   text,
   cancelBtnProps,
   confirmBtnProps,
   i18n,
 }) => {
-  const strings = { ...DEFAULT_I18N, ...(i18n ?? {}) };
+  const { t } = useTranslation();
+  const strings: DropDownMenuConfirmI18n = {
+    cancelLabel: t("common.cancel"),
+    confirmLabel: t("common.confirm"),
+    ...(i18n ?? {}),
+  };
   const {
     show = true,
     text: cancelText = strings.cancelLabel,
@@ -49,7 +50,9 @@ const DropDownMenuConfirm: FC<DropDownMenuConfirmProps> = ({
 
   return (
     <Stack spacing={1}>
-      <Typography variant="body2" color="text.primary">
+      <Typography variant="body2" sx={{
+        color: "text.primary"
+      }}>
         {text}
       </Typography>
       <Stack spacing={1}>

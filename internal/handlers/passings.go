@@ -55,8 +55,8 @@ func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(
-		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+		`INSERT INTO passings (id, card, checkpoint, raw_code, timestamp, enabled, source, sort_order, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to prepare statement"})
@@ -78,12 +78,12 @@ func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 		}
 
 		req.Timestamp = roundCs(req.Timestamp)
-		if _, err := stmt.Exec(id, req.Card, req.Checkpoint, req.Timestamp, enabled, source, now, now); err != nil {
+		if _, err := stmt.Exec(id, req.Card, req.Checkpoint, req.RawCode, req.Timestamp, enabled, source, now, now); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("failed to insert passing[%d]", i)})
 		}
 
 		passings[i] = models.Passing{
-			ID: id, Card: req.Card, Checkpoint: req.Checkpoint,
+			ID: id, Card: req.Card, Checkpoint: req.Checkpoint, RawCode: req.RawCode,
 			Timestamp: req.Timestamp, Enabled: enabled, Source: source,
 			CreatedAt: now, UpdatedAt: now,
 		}
@@ -119,7 +119,7 @@ func (h *Handler) ListPassings(c *fiber.Ctx) error {
 	updatedAfter := c.Query("updated_after")
 	cards := c.Context().QueryArgs().PeekMulti("card")
 
-	query := `SELECT id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at FROM passings`
+	query := `SELECT id, card, checkpoint, COALESCE(raw_code, ''), timestamp, enabled, source, sort_order, created_at, updated_at FROM passings`
 	var conditions []string
 	var args []interface{}
 
@@ -153,7 +153,7 @@ func (h *Handler) ListPassings(c *fiber.Ctx) error {
 	for rows.Next() {
 		var p models.Passing
 		if err := rows.Scan(
-			&p.ID, &p.Card, &p.Checkpoint, &p.Timestamp, &p.Enabled, &p.Source,
+			&p.ID, &p.Card, &p.Checkpoint, &p.RawCode, &p.Timestamp, &p.Enabled, &p.Source,
 			&p.SortOrder, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "scan error"})
@@ -167,6 +167,7 @@ func (h *Handler) ListPassings(c *fiber.Ctx) error {
 type passingRequest struct {
 	Card       string  `json:"card"`
 	Checkpoint string  `json:"checkpoint"`
+	RawCode    string  `json:"rawCode"`
 	Timestamp  float64 `json:"timestamp"`
 	Enabled    int     `json:"enabled"`
 	Source     string  `json:"source"`
@@ -205,16 +206,16 @@ func (h *Handler) CreatePassing(c *fiber.Ctx) error {
 	req.Timestamp = roundCs(req.Timestamp)
 
 	_, err = db.Exec(
-		`INSERT INTO passings (id, card, checkpoint, timestamp, enabled, source, sort_order, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now, now,
+		`INSERT INTO passings (id, card, checkpoint, raw_code, timestamp, enabled, source, sort_order, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, req.Card, req.Checkpoint, req.RawCode, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now, now,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create passing"})
 	}
 
 	passing := models.Passing{
-		ID: id, Card: req.Card, Checkpoint: req.Checkpoint,
+		ID: id, Card: req.Card, Checkpoint: req.Checkpoint, RawCode: req.RawCode,
 		Timestamp: req.Timestamp, Enabled: req.Enabled, Source: req.Source,
 		SortOrder: req.SortOrder, CreatedAt: now, UpdatedAt: now,
 	}
@@ -255,9 +256,9 @@ func (h *Handler) UpdatePassing(c *fiber.Ctx) error {
 	req.Timestamp = roundCs(req.Timestamp)
 
 	result, err := db.Exec(
-		`UPDATE passings SET card = ?, checkpoint = ?, timestamp = ?, enabled = ?, source = ?, sort_order = ?, updated_at = ?
+		`UPDATE passings SET card = ?, checkpoint = ?, raw_code = ?, timestamp = ?, enabled = ?, source = ?, sort_order = ?, updated_at = ?
 		WHERE id = ?`,
-		req.Card, req.Checkpoint, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now,
+		req.Card, req.Checkpoint, req.RawCode, req.Timestamp, req.Enabled, req.Source, req.SortOrder, now,
 		passingID,
 	)
 	if err != nil {
@@ -273,7 +274,7 @@ func (h *Handler) UpdatePassing(c *fiber.Ctx) error {
 	_ = db.QueryRow("SELECT created_at FROM passings WHERE id = ?", passingID).Scan(&createdAt)
 
 	passing := models.Passing{
-		ID: passingID, Card: req.Card, Checkpoint: req.Checkpoint,
+		ID: passingID, Card: req.Card, Checkpoint: req.Checkpoint, RawCode: req.RawCode,
 		Timestamp: req.Timestamp, Enabled: req.Enabled, Source: req.Source,
 		SortOrder: req.SortOrder, CreatedAt: createdAt, UpdatedAt: now,
 	}

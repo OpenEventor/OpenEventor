@@ -1,4 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar as MuiAppBar,
@@ -18,6 +20,8 @@ import {
   People as PeopleIcon,
   DesktopWindows as MonitorIcon,
   Description as ProtocolsIcon,
+  PinDrop as CheckpointsIcon,
+  ReportProblem as ProblemsIcon,
   Route as DistancesIcon,
   GroupWork as GroupsIcon,
   SwapVert as PassingsIcon,
@@ -32,6 +36,7 @@ import {
   Palette as PaletteIcon,
   Apps as AppsIcon,
   ArrowBack as ArrowBackIcon,
+  Translate as LanguageIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
@@ -50,49 +55,70 @@ export const EVENT_TABS = [
 ] as const;
 
 export const MORE_TABS = [
+  { path: "checkpoints", label: "Checkpoints", icon: CheckpointsIcon },
   { path: "distances", label: "Distances", icon: DistancesIcon },
   { path: "groups", label: "Groups", icon: GroupsIcon },
   { path: "passings", label: "Passings", icon: PassingsIcon },
   { path: "teams", label: "Teams", icon: TeamsIcon },
+  { path: "problems", label: "Problems", icon: ProblemsIcon },
 ] as const;
 
 interface AppBarProps {
   withSearch?: boolean;
 }
 
-const THEME_OPTIONS = [
-  { value: "light", label: "Light", icon: <LightModeIcon sx={{ fontSize: 16 }} /> },
-  { value: "dark", label: "Dark", icon: <DarkModeIcon sx={{ fontSize: 16 }} /> },
-  { value: "system", label: "Auto", icon: <AutoModeIcon sx={{ fontSize: 16 }} /> },
-];
-
-function ThemeModeRadioGroup() {
+export function ThemeModeRadioGroup() {
+  const { t } = useTranslation();
   const { mode, setMode } = useThemeMode();
+  const options = [
+    { value: "light", label: t("nav.themeLight"), icon: <LightModeIcon sx={{ fontSize: 16 }} /> },
+    { value: "dark", label: t("nav.themeDark"), icon: <DarkModeIcon sx={{ fontSize: 16 }} /> },
+    { value: "system", label: t("nav.themeAuto"), icon: <AutoModeIcon sx={{ fontSize: 16 }} /> },
+  ];
   return (
     <DropDownMenuRadioGroup
-      options={THEME_OPTIONS}
+      options={options}
       value={mode}
       onChange={(val) => setMode(val as "light" | "dark" | "system")}
     />
   );
 }
 
-function HighContrastSwitch() {
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ru", label: "Русский" },
+];
+
+export function LanguageRadioGroup() {
+  const { i18n } = useTranslation();
+  const current = i18n.language?.split("-")[0] ?? "en";
+  return (
+    <DropDownMenuRadioGroup
+      options={LANGUAGE_OPTIONS}
+      value={LANGUAGE_OPTIONS.some((o) => o.value === current) ? current : "en"}
+      onChange={(val) => i18n.changeLanguage(val)}
+    />
+  );
+}
+
+export function HighContrastSwitch() {
+  const { t } = useTranslation();
   const { highContrast, setHighContrast } = useThemeMode();
   return (
     <DropDownMenuSwitcher
-      text="High contrast"
+      text={t("nav.highContrast")}
       checked={highContrast}
       onChange={setHighContrast}
     />
   );
 }
 
-function CompactViewSwitch() {
+export function CompactViewSwitch() {
+  const { t } = useTranslation();
   const { compactView, setCompactView } = useThemeMode();
   return (
     <DropDownMenuSwitcher
-      text="Compact view"
+      text={t("nav.compactView")}
       checked={compactView}
       onChange={setCompactView}
     />
@@ -100,6 +126,7 @@ function CompactViewSwitch() {
 }
 
 export function AppBar({ withSearch = false }: AppBarProps) {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -131,7 +158,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
       items: [
         ...MORE_TABS.map((tab) => ({
           icon: <tab.icon />,
-          text: tab.label,
+          text: t(`nav.items.${tab.path}`),
           action: () => {
             navigate(`/events/${eventId}/${tab.path}`);
             handleMoreClose();
@@ -139,7 +166,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
         })),
         {
           icon: <SettingsIcon />,
-          text: "Event settings",
+          text: t("nav.eventSettings"),
           action: () => {
             navigate(`/events/${eventId}/settings`);
             handleMoreClose();
@@ -150,7 +177,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
         },
         {
           icon: <AppsIcon />,
-          text: "All modules",
+          text: t("nav.allModules"),
           action: () => {
             navigate(`/events/${eventId}/modules`);
             handleMoreClose();
@@ -159,7 +186,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
       ],
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [eventId],
+    [eventId, t],
   );
 
   const settingsMenu: DropDownMenuConfig = useMemo(
@@ -169,7 +196,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           ? [
               {
                 icon: <ArrowBackIcon />,
-                text: "Back to event list",
+                text: t("nav.backToEventList"),
                 action: () => {
                   navigate("/events");
                   handleSettingsClose();
@@ -179,10 +206,10 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           : []),
         {
           icon: <PaletteIcon />,
-          text: "Setup theme",
+          text: t("nav.setupTheme"),
           showNestedChevron: true,
           nested: {
-            title: "Setup theme",
+            title: t("nav.setupTheme"),
             items: [
               {
                 Component: <ThemeModeRadioGroup />,
@@ -197,8 +224,21 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           },
         },
         {
+          icon: <LanguageIcon />,
+          text: t("nav.language"),
+          showNestedChevron: true,
+          nested: {
+            title: t("nav.language"),
+            items: [
+              {
+                Component: <LanguageRadioGroup />,
+              },
+            ],
+          },
+        },
+        {
           icon: <LogoutIcon />,
-          text: "Logout",
+          text: t("nav.logout"),
           action: () => {
             logout();
           },
@@ -206,7 +246,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
       ],
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [eventId],
+    [eventId, t],
   );
 
   return (
@@ -258,7 +298,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 }}
                 onClick={() => navigate(`/events/${eventId}/competitors`)}
               >
-                {eventCtx?.displayName || "Event"}
+                {eventCtx?.displayName || t("nav.event")}
               </Typography>
             </Tooltip>
           ) : (
@@ -274,7 +314,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.path;
                 return (
-                  <Tooltip key={tab.path} title={tab.label} arrow>
+                  <Tooltip key={tab.path} title={t(`nav.items.${tab.path}`)} arrow>
                     <IconButton
                       onClick={() => navigate(`/events/${eventId}/${tab.path}`)}
                       sx={{
@@ -288,7 +328,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                   </Tooltip>
                 );
               })}
-              <Tooltip title="More" arrow>
+              <Tooltip title={t("nav.more")} arrow>
                 <IconButton
                   onClick={(e) => setMoreAnchor(e.currentTarget)}
                   sx={{
@@ -311,7 +351,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             <TextField
               size="small"
               variant="outlined"
-              placeholder="Search..."
+              placeholder={t("common.searchPlaceholder")}
               slotProps={{
                 input: {
                   startAdornment: (
@@ -329,7 +369,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           )}
 
           {/* Settings gear */}
-          <Tooltip title="Settings" arrow>
+          <Tooltip title={t("nav.settings")} arrow>
             <IconButton onClick={(e) => setSettingsAnchor(e.currentTarget)}>
               <SettingsIcon />
             </IconButton>
@@ -401,7 +441,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                   >
                     <Icon fontSize="small" />
                     <Typography variant="body2" sx={{ fontWeight: "inherit" }}>
-                      {tab.label}
+                      {t(`nav.items.${tab.path}`)}
                     </Typography>
                   </ButtonBase>
                 </Box>
@@ -433,7 +473,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 }}
               >
                 <MoreHorizIcon fontSize="small" />
-                <Typography variant="body2" sx={{ fontWeight: "inherit" }}>More</Typography>
+                <Typography variant="body2" sx={{ fontWeight: "inherit" }}>{t("nav.more")}</Typography>
               </ButtonBase>
             </Box>
           </Box>

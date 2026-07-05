@@ -129,9 +129,9 @@ func (h *Handler) ExecuteImport(c *fiber.Ctx) error {
 		}
 	}
 
-	// Read event date for startTime parsing.
+	// Read event date for startTime parsing (canonical key, legacy fallback).
 	var eventDate string
-	_ = db.QueryRow("SELECT value FROM settings WHERE key = 'event_date'").Scan(&eventDate)
+	_ = db.QueryRow(`SELECT COALESCE((SELECT value FROM settings WHERE key='date'),(SELECT value FROM settings WHERE key='event_date'),'')`).Scan(&eventDate)
 
 	created, updated, skipped := 0, 0, 0
 	var errors []string

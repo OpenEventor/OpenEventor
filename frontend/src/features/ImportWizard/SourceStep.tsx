@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Card, CardActionArea, CircularProgress, Typography } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
@@ -13,6 +14,7 @@ interface SourceStepProps {
 }
 
 export default function SourceStep({ parseUrl, onFileLoaded, onPasteSelected, onError }: SourceStepProps) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -30,7 +32,7 @@ export default function SourceStep({ parseUrl, onFileLoaded, onPasteSelected, on
       const result = await api.upload<ImportParseResponse>(parseUrl, formData);
       onFileLoaded(result.rows);
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to parse file');
+      onError(err instanceof Error ? err.message : t('import.failedToParseFile'));
     } finally {
       setUploading(false);
     }
@@ -45,7 +47,6 @@ export default function SourceStep({ parseUrl, onFileLoaded, onPasteSelected, on
         hidden
         onChange={handleFileChange}
       />
-
       <Card variant="outlined" sx={{ width: 200 }}>
         <CardActionArea
           onClick={() => fileRef.current?.click()}
@@ -57,26 +58,33 @@ export default function SourceStep({ parseUrl, onFileLoaded, onPasteSelected, on
           ) : (
             <UploadFileIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
           )}
-          <Typography variant="subtitle1" fontWeight={600}>
-            Upload file
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
+            {t('import.uploadFile')}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            .xlsx or .csv
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
+            {t('import.uploadHint')}
           </Typography>
         </CardActionArea>
       </Card>
-
       <Card variant="outlined" sx={{ width: 200 }}>
         <CardActionArea
           onClick={onPasteSelected}
           sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, height: '100%' }}
         >
           <ContentPasteIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-          <Typography variant="subtitle1" fontWeight={600}>
-            Paste text
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
+            {t('import.pasteText')}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            From clipboard
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
+            {t('import.pasteHint')}
           </Typography>
         </CardActionArea>
       </Card>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Box,
@@ -11,7 +12,7 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  DeleteOutline as DeleteIcon,
+  DeleteOutlined as DeleteIcon,
   Search as SearchIcon,
   MoreHoriz as MoreHorizIcon,
 } from '@mui/icons-material';
@@ -23,17 +24,9 @@ import { api } from '../../../api/client.ts';
 import type { Group } from '../../../api/types.ts';
 import { GroupDialog } from './GroupDialog.tsx';
 
-const COLUMNS: GridColDef[] = [
-  { field: 'name', headerName: 'Name', flex: 1, minWidth: 120 },
-  { field: 'gender', headerName: 'Gender', width: 80 },
-  { field: 'yearFrom', headerName: 'Year from', width: 100, type: 'number' },
-  { field: 'yearTo', headerName: 'Year to', width: 100, type: 'number' },
-  { field: 'courseId', headerName: 'Course', width: 120 },
-  { field: 'sortOrder', headerName: 'Order', width: 80, type: 'number' },
-];
-
 export function GroupsPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const { t } = useTranslation();
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +46,11 @@ export function GroupsPage() {
       const data = await api.get<Group[]>(`/api/events/${eventId}/groups`);
       setGroups(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load groups');
+      setError(err instanceof Error ? err.message : t('groups.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -78,7 +71,16 @@ export function GroupsPage() {
     ),
   }), []);
 
-  const columns = useMemo(() => [...COLUMNS, actionsColumn], [actionsColumn]);
+  const baseColumns: GridColDef[] = useMemo(() => [
+    { field: 'name', headerName: t('common.name'), flex: 1, minWidth: 120 },
+    { field: 'gender', headerName: t('groups.gender'), width: 80 },
+    { field: 'yearFrom', headerName: t('groups.yearFrom'), width: 100, type: 'number' },
+    { field: 'yearTo', headerName: t('groups.yearTo'), width: 100, type: 'number' },
+    { field: 'courseId', headerName: t('groups.course'), width: 120 },
+    { field: 'sortOrder', headerName: t('groups.order'), width: 80, type: 'number' },
+  ], [t]);
+
+  const columns = useMemo(() => [...baseColumns, actionsColumn], [baseColumns, actionsColumn]);
 
   const handleRowMenuClose = () => { setRowMenuAnchor(null); setRowMenuId(null); };
 
@@ -101,18 +103,18 @@ export function GroupsPage() {
 
   const rowMenu: DropDownMenuConfig = useMemo(() => ({
     items: [
-      { icon: <EditIcon />, text: 'Edit', action: handleEdit },
+      { icon: <EditIcon />, text: t('common.edit'), action: handleEdit },
       {
-        icon: <DeleteIcon />, text: 'Delete',
+        icon: <DeleteIcon />, text: t('common.delete'),
         nested: {
-          title: 'Delete group',
+          title: t('groups.deleteTitle'),
           items: [{
             Component: (
               <DropDownMenuPrompt
-                label={`Type "${menuItem?.name ?? ''}" to confirm`}
-                placeholder="Group name"
-                confirmBtnProps={{ text: 'Delete', color: 'error', onClick: (v: string) => { if (v === (menuItem?.name ?? '')) handleDelete(); } }}
-                cancelBtnProps={{ show: true, text: 'Cancel', onClick: handleRowMenuClose }}
+                label={t('groups.deleteConfirmLabel', { name: menuItem?.name ?? '' })}
+                placeholder={t('groups.namePlaceholder')}
+                confirmBtnProps={{ text: t('common.delete'), color: 'error', onClick: (v: string) => { if (v === (menuItem?.name ?? '')) handleDelete(); } }}
+                cancelBtnProps={{ show: true, text: t('common.cancel'), onClick: handleRowMenuClose }}
               />
             ),
           }],
@@ -128,18 +130,18 @@ export function GroupsPage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, flexWrap: 'wrap' }}>
         <TextField
-          size="small" variant="outlined" placeholder="Search..."
+          size="small" variant="outlined" placeholder={t('common.searchPlaceholder')}
           value={searchText} onChange={(e) => setSearchText(e.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> } }}
           sx={{ width: 220 }}
         />
         <Box sx={{ flexGrow: 1 }} />
         <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{ height: 40 }} onClick={() => { setEditingItem(null); setDialogOpen(true); }}>
-          Add new
+          {t('groups.addNew')}
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>Retry</Button>}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>{t('common.retry')}</Button>}>{error}</Alert>}
 
       <DropDownMenu open={Boolean(rowMenuAnchor)} onClose={handleRowMenuClose} menu={rowMenu} anchorEl={rowMenuAnchor} width={220} />
       <GroupDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditingItem(null); }} onSaved={handleSaved} eventId={eventId || ''} group={editingItem} />

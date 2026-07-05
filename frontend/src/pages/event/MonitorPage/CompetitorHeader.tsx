@@ -1,4 +1,5 @@
 import { useState, type MouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, useTheme } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import type { MonitorCompetitor } from './useMonitorStore';
@@ -61,6 +62,7 @@ export default function CompetitorHeader({
   highlight,
   onShowCompetitor,
 }: CompetitorHeaderProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { date: baseDate, timezone } = useEvent();
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -75,7 +77,7 @@ export default function CompetitorHeader({
   const menu: DropDownMenuConfig | null = (competitor && onShowCompetitor) ? {
     title: `#${competitor.bib}`,
     items: [
-      { icon: <PersonIcon fontSize="small" />, text: 'Show competitor', action: () => { setMenuPos(null); onShowCompetitor(); } },
+      { icon: <PersonIcon fontSize="small" />, text: t('monitor.showCompetitor'), action: () => { setMenuPos(null); onShowCompetitor(); } },
     ],
   } : null;
 

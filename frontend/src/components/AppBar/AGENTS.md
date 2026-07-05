@@ -13,9 +13,13 @@ Main navigation bar with two layout modes (compact/normal) controlled by theme c
 - **compact** (`compactView: true`): Single row (60px). Icon-only tabs, active tab highlighted with background.
 - **normal** (`compactView: false`): Two rows (60px + 48px). Second row has tabs with icon + text. Active tab underlined with 2px orange line.
 
+## Scope
+Account-level header only (rendered by `ProtectedRoute` on non-event pages, e.g. the events list). In-event navigation now lives in the left [EventSidebar](../EventSidebar/AGENTS.md); the tab/`EVENT_TABS` code paths here only render when an `eventId` param is present, which no longer happens for this instance.
+
 ## Exports
 - `AppBar` — the component
-- `EVENT_TABS` — array of `{ path, label, icon }` for reuse in BottomNav
+- `EVENT_TABS`, `MORE_TABS` — tab descriptor arrays (legacy in-event nav)
+- `ThemeModeRadioGroup`, `HighContrastSwitch`, `CompactViewSwitch` — theme-control widgets reused by EventSidebar's Preferences menu
 
 ## Behavior
 - Tab icons: Competitors (PeopleIcon), Splits (LeaderboardIcon), Groups (GroupWorkIcon), Teams (Diversity3Icon), More (MoreHorizIcon, placeholder)
@@ -28,7 +32,7 @@ Main navigation bar with two layout modes (compact/normal) controlled by theme c
     - High contrast switch (changes dividers to pure black/white)
     - Compact view switch (toggles AppBar layout mode)
   - Logout
-- On mobile (`< 600px`): tabs hidden in both modes (moved to BottomNav), search hidden
+- On mobile (`< 600px`): search hidden
 
 ## Dependencies
 - `AuthContext` — `logout()`
@@ -36,5 +40,5 @@ Main navigation bar with two layout modes (compact/normal) controlled by theme c
 - `react-router-dom` — `useParams`, `useNavigate`, `useLocation`
 
 ## Related
-- [BottomNav](../BottomNav/AGENTS.md) — mobile version of tab navigation
+- [EventSidebar](../EventSidebar/AGENTS.md) — in-event left-sidebar navigation (replaces the old top tabs + BottomNav)
 - [ProtectedRoute](../ProtectedRoute/AGENTS.md) — renders AppBar

@@ -1,4 +1,5 @@
 import { Button, Stack, TextField, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type { FC, InputHTMLAttributes, KeyboardEvent } from "react";
 import { useEffect, useState } from "react";
 
@@ -38,13 +39,6 @@ export interface DropDownMenuPromptI18n {
   confirmLabel: string;
 }
 
-const DEFAULT_I18N: DropDownMenuPromptI18n = {
-  label: "New name",
-  placeholder: "Enter name",
-  cancelLabel: "Cancel",
-  confirmLabel: "Save",
-};
-
 const DropDownMenuPrompt: FC<DropDownMenuPromptProps> = ({
   label,
   placeholder,
@@ -55,7 +49,14 @@ const DropDownMenuPrompt: FC<DropDownMenuPromptProps> = ({
   confirmBtnProps,
   i18n,
 }) => {
-  const strings = { ...DEFAULT_I18N, ...(i18n ?? {}) };
+  const { t } = useTranslation();
+  const strings: DropDownMenuPromptI18n = {
+    label: t("components.promptLabel"),
+    placeholder: t("components.promptPlaceholder"),
+    cancelLabel: t("common.cancel"),
+    confirmLabel: t("common.save"),
+    ...(i18n ?? {}),
+  };
   const resolvedLabel = label ?? strings.label;
   const resolvedPlaceholder = placeholder ?? strings.placeholder;
   const showLabel = Boolean(resolvedLabel);
@@ -96,7 +97,9 @@ const DropDownMenuPrompt: FC<DropDownMenuPromptProps> = ({
   return (
     <Stack spacing={1}>
       {showLabel && (
-        <Typography variant="body2" color="text.primary">
+        <Typography variant="body2" sx={{
+          color: "text.primary"
+        }}>
           {resolvedLabel}
         </Typography>
       )}
@@ -104,13 +107,15 @@ const DropDownMenuPrompt: FC<DropDownMenuPromptProps> = ({
         size="small"
         variant="outlined"
         type={inputType}
-        inputProps={inputProps}
         value={value}
         placeholder={resolvedPlaceholder}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={handleKeyDown}
         autoFocus
         fullWidth
+        slotProps={{
+          htmlInput: inputProps
+        }}
       />
       <Stack spacing={1}>
         {show && (

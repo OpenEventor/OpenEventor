@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Button, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography } from '@mui/material';
 
 interface PasteStepProps {
@@ -15,6 +16,7 @@ const DELIMITER_MAP: Record<Exclude<Delimiter, 'custom'>, string> = {
 };
 
 export default function PasteStep({ onParsed, onBack }: PasteStepProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [delimiter, setDelimiter] = useState<Delimiter>('tab');
   const [customDelimiter, setCustomDelimiter] = useState('');
@@ -47,13 +49,17 @@ export default function PasteStep({ onParsed, onBack }: PasteStepProps) {
         maxRows={16}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Paste your data here..."
+        placeholder={t('import.pastePlaceholder')}
         sx={{ '& textarea': { fontFamily: 'monospace', fontSize: '0.85rem' } }}
       />
-
       <Box>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-          Delimiter
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            mb: 0.5
+          }}>
+          {t('import.delimiter')}
         </Typography>
         <FormControl>
           <RadioGroup
@@ -61,10 +67,10 @@ export default function PasteStep({ onParsed, onBack }: PasteStepProps) {
             value={delimiter}
             onChange={(e) => setDelimiter(e.target.value as Delimiter)}
           >
-            <FormControlLabel value="tab" control={<Radio size="small" />} label="Tab" />
-            <FormControlLabel value="semicolon" control={<Radio size="small" />} label="Semicolon" />
-            <FormControlLabel value="comma" control={<Radio size="small" />} label="Comma" />
-            <FormControlLabel value="custom" control={<Radio size="small" />} label="Custom" />
+            <FormControlLabel value="tab" control={<Radio size="small" />} label={t('import.delimiterTab')} />
+            <FormControlLabel value="semicolon" control={<Radio size="small" />} label={t('import.delimiterSemicolon')} />
+            <FormControlLabel value="comma" control={<Radio size="small" />} label={t('import.delimiterComma')} />
+            <FormControlLabel value="custom" control={<Radio size="small" />} label={t('import.delimiterCustom')} />
           </RadioGroup>
         </FormControl>
         {delimiter === 'custom' && (
@@ -72,20 +78,19 @@ export default function PasteStep({ onParsed, onBack }: PasteStepProps) {
             size="small"
             value={customDelimiter}
             onChange={(e) => setCustomDelimiter(e.target.value)}
-            placeholder="Enter delimiter"
+            placeholder={t('import.enterDelimiter')}
             sx={{ width: 120, ml: 1 }}
           />
         )}
       </Box>
-
       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button onClick={onBack}>Back</Button>
+        <Button onClick={onBack}>{t('common.back')}</Button>
         <Button
           variant="contained"
           onClick={handleNext}
           disabled={!text.trim()}
         >
-          Next
+          {t('common.next')}
         </Button>
       </Box>
     </Box>

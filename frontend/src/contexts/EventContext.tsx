@@ -58,9 +58,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const value: EventContextValue = {
     eventId: eventId ?? '',
     settings,
-    displayName: settings.event_name ?? '',
-    date: settings.event_date || new Date().toISOString().slice(0, 10),
-    timezone: settings.event_timezone || 'UTC',
+    displayName: settings.display_name ?? settings.event_name ?? '',
+    date: settings.date || settings.event_date || new Date().toISOString().slice(0, 10),
+    timezone: settings.timezone || settings.event_timezone || 'UTC',
     loading,
   };
 

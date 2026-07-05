@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
+  FormControlLabel,
   IconButton,
+  MenuItem,
+  Popover,
   TextField,
   InputAdornment,
   Tooltip,
@@ -18,7 +24,7 @@ import {
   Add as AddIcon,
   Close as CloseIcon,
   Edit as EditIcon,
-  DeleteOutline as DeleteIcon,
+  DeleteOutlined as DeleteIcon,
   FileUpload as FileUploadIcon,
   FileDownload as FileDownloadIcon,
   Search as SearchIcon,
@@ -33,47 +39,51 @@ import type { DropDownMenuConfig } from '../../../components/DropDownMenu/types.
 import { useColumnSettings, type ColumnDef } from '../../../hooks/useColumnSettings.ts';
 import { ColumnSettingsPanel } from '../../../components/ColumnSettingsPanel/ColumnSettingsPanel.tsx';
 import { api } from '../../../api/client.ts';
-import type { Competitor } from '../../../api/types.ts';
+import type { Competitor, Group, Course, Team } from '../../../api/types.ts';
 import { CompetitorDialog } from './CompetitorDialog.tsx';
 import Time from '../../../components/Time/Time.tsx';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 import ImportWizard from '../../../features/ImportWizard/ImportWizard.tsx';
 import { COMPETITOR_FIELDS } from '../../../features/ImportWizard/fieldDefinitions.ts';
 
-const COLUMN_DEFS: ColumnDef[] = [
-  { field: 'bib', label: 'Bib' },
-  { field: 'lastName', label: 'Last Name' },
-  { field: 'firstName', label: 'First Name' },
-  { field: 'middleName', label: 'Middle Name', defaultVisible: false },
-  { field: 'lastNameInt', label: 'Last Name (Int)', defaultVisible: false },
-  { field: 'firstNameInt', label: 'First Name (Int)', defaultVisible: false },
-  { field: 'card1', label: 'Card 1' },
-  { field: 'card2', label: 'Card 2', defaultVisible: false },
-  { field: 'groupId', label: 'Group', defaultVisible: false },
-  { field: 'courseId', label: 'Course', defaultVisible: false },
-  { field: 'teamId', label: 'Team', defaultVisible: false },
-  { field: 'gender', label: 'Gender', defaultVisible: false },
-  { field: 'birthDate', label: 'Birth Date', defaultVisible: false },
-  { field: 'birthYear', label: 'Birth Year', defaultVisible: false },
-  { field: 'rank', label: 'Rank', defaultVisible: false },
-  { field: 'rating', label: 'Rating', defaultVisible: false },
-  { field: 'country', label: 'Country', defaultVisible: false },
-  { field: 'region', label: 'Region', defaultVisible: false },
-  { field: 'city', label: 'City', defaultVisible: false },
-  { field: 'phone', label: 'Phone', defaultVisible: false },
-  { field: 'email', label: 'Email', defaultVisible: false },
-  { field: 'startTime', label: 'Start Time', defaultVisible: false },
-  { field: 'timeAdjustment', label: 'Time Adj.', defaultVisible: false },
-  { field: 'dsq', label: 'DSQ', defaultVisible: false },
-  { field: 'dns', label: 'DNS', defaultVisible: false },
-  { field: 'dnf', label: 'DNF', defaultVisible: false },
-  { field: 'outOfRank', label: 'Out of Rank', defaultVisible: false },
-  { field: 'entryNumber', label: 'Entry Number', defaultVisible: false },
-  { field: 'price', label: 'Price', defaultVisible: false },
-  { field: 'isPaid', label: 'Paid', defaultVisible: false },
-  { field: 'isCheckin', label: 'Check-in', defaultVisible: false },
-  { field: 'notes', label: 'Notes', defaultVisible: false },
-];
+type TFn = (key: string, options?: Record<string, unknown>) => string;
+
+function buildColumnDefs(t: TFn): ColumnDef[] {
+  return [
+    { field: 'bib', label: t('competitors.columns.bib') },
+    { field: 'lastName', label: t('competitors.columns.lastName') },
+    { field: 'firstName', label: t('competitors.columns.firstName') },
+    { field: 'middleName', label: t('competitors.columns.middleName'), defaultVisible: false },
+    { field: 'lastNameInt', label: t('competitors.columns.lastNameInt'), defaultVisible: false },
+    { field: 'firstNameInt', label: t('competitors.columns.firstNameInt'), defaultVisible: false },
+    { field: 'card1', label: t('competitors.columns.card1') },
+    { field: 'card2', label: t('competitors.columns.card2'), defaultVisible: false },
+    { field: 'groupId', label: t('competitors.columns.group'), defaultVisible: false },
+    { field: 'courseId', label: t('competitors.columns.course'), defaultVisible: false },
+    { field: 'teamId', label: t('competitors.columns.team'), defaultVisible: false },
+    { field: 'gender', label: t('competitors.columns.gender'), defaultVisible: false },
+    { field: 'birthDate', label: t('competitors.columns.birthDate'), defaultVisible: false },
+    { field: 'birthYear', label: t('competitors.columns.birthYear'), defaultVisible: false },
+    { field: 'rank', label: t('competitors.columns.rank'), defaultVisible: false },
+    { field: 'rating', label: t('competitors.columns.rating'), defaultVisible: false },
+    { field: 'country', label: t('competitors.columns.country'), defaultVisible: false },
+    { field: 'region', label: t('competitors.columns.region'), defaultVisible: false },
+    { field: 'city', label: t('competitors.columns.city'), defaultVisible: false },
+    { field: 'phone', label: t('competitors.columns.phone'), defaultVisible: false },
+    { field: 'email', label: t('competitors.columns.email'), defaultVisible: false },
+    { field: 'startTime', label: t('competitors.columns.startTime'), defaultVisible: false },
+    { field: 'timeAdjustment', label: t('competitors.columns.timeAdjustment'), defaultVisible: false },
+    { field: 'dsq', label: 'DSQ', defaultVisible: false },
+    { field: 'dns', label: 'DNS', defaultVisible: false },
+    { field: 'dnf', label: 'DNF', defaultVisible: false },
+    { field: 'outOfRank', label: t('competitors.columns.outOfRank'), defaultVisible: false },
+    { field: 'entryNumber', label: t('competitors.columns.entryNumber'), defaultVisible: false },
+    { field: 'price', label: t('competitors.columns.price'), defaultVisible: false },
+    { field: 'isPaid', label: t('competitors.columns.paid'), defaultVisible: false },
+    { field: 'isCheckin', label: t('competitors.columns.checkin'), defaultVisible: false },
+    { field: 'notes', label: t('common.notes'), defaultVisible: false },
+  ];
+}
 
 function StartTimeCell({ value }: { value: number }) {
   const { date: baseDate, timezone } = useEvent();
@@ -81,42 +91,74 @@ function StartTimeCell({ value }: { value: number }) {
   return <Time value={value} baseDate={baseDate} timezone={timezone} />;
 }
 
-const BASE_COLUMNS: GridColDef[] = [
-  { field: 'bib', headerName: 'Bib', width: 70 },
-  { field: 'lastName', headerName: 'Last Name', flex: 1, minWidth: 120 },
-  { field: 'firstName', headerName: 'First Name', flex: 1, minWidth: 120 },
-  { field: 'middleName', headerName: 'Middle Name', flex: 1, minWidth: 120 },
-  { field: 'lastNameInt', headerName: 'Last Name (Int)', flex: 1, minWidth: 120 },
-  { field: 'firstNameInt', headerName: 'First Name (Int)', flex: 1, minWidth: 120 },
-  { field: 'card1', headerName: 'Card 1', width: 100 },
-  { field: 'card2', headerName: 'Card 2', width: 100 },
-  { field: 'groupId', headerName: 'Group', width: 120 },
-  { field: 'courseId', headerName: 'Course', width: 120 },
-  { field: 'teamId', headerName: 'Team', width: 140 },
-  { field: 'gender', headerName: 'Gender', width: 80 },
-  { field: 'birthDate', headerName: 'Birth Date', width: 110 },
-  { field: 'birthYear', headerName: 'Birth Year', width: 100 },
-  { field: 'rank', headerName: 'Rank', width: 100 },
-  { field: 'rating', headerName: 'Rating', width: 80, type: 'number' },
-  { field: 'country', headerName: 'Country', width: 110 },
-  { field: 'region', headerName: 'Region', width: 110 },
-  { field: 'city', headerName: 'City', width: 110 },
-  { field: 'phone', headerName: 'Phone', width: 130 },
-  { field: 'email', headerName: 'Email', width: 180 },
-  { field: 'startTime', headerName: 'Start Time', width: 130, renderCell: (params) => <StartTimeCell value={params.value as number} /> },
-  { field: 'timeAdjustment', headerName: 'Time Adj.', width: 90, type: 'number' },
-  { field: 'dsq', headerName: 'DSQ', width: 60, type: 'boolean' },
-  { field: 'dns', headerName: 'DNS', width: 60, type: 'boolean' },
-  { field: 'dnf', headerName: 'DNF', width: 60, type: 'boolean' },
-  { field: 'outOfRank', headerName: 'Out of Rank', width: 100, type: 'boolean' },
-  { field: 'entryNumber', headerName: 'Entry Number', width: 110 },
-  { field: 'price', headerName: 'Price', width: 80, type: 'number' },
-  { field: 'isPaid', headerName: 'Paid', width: 70, type: 'boolean' },
-  { field: 'isCheckin', headerName: 'Check-in', width: 80, type: 'boolean' },
-  { field: 'notes', headerName: 'Notes', flex: 1, minWidth: 150 },
-];
+function buildBaseColumns(t: TFn): GridColDef[] {
+  return [
+    { field: 'bib', headerName: t('competitors.columns.bib'), width: 70 },
+    { field: 'lastName', headerName: t('competitors.columns.lastName'), flex: 1, minWidth: 120 },
+    { field: 'firstName', headerName: t('competitors.columns.firstName'), flex: 1, minWidth: 120 },
+    { field: 'middleName', headerName: t('competitors.columns.middleName'), flex: 1, minWidth: 120 },
+    { field: 'lastNameInt', headerName: t('competitors.columns.lastNameInt'), flex: 1, minWidth: 120 },
+    { field: 'firstNameInt', headerName: t('competitors.columns.firstNameInt'), flex: 1, minWidth: 120 },
+    { field: 'card1', headerName: t('competitors.columns.card1'), width: 100 },
+    { field: 'card2', headerName: t('competitors.columns.card2'), width: 100 },
+    { field: 'groupId', headerName: t('competitors.columns.group'), width: 120 },
+    { field: 'courseId', headerName: t('competitors.columns.course'), width: 120 },
+    { field: 'teamId', headerName: t('competitors.columns.team'), width: 140 },
+    { field: 'gender', headerName: t('competitors.columns.gender'), width: 80 },
+    { field: 'birthDate', headerName: t('competitors.columns.birthDate'), width: 110 },
+    { field: 'birthYear', headerName: t('competitors.columns.birthYear'), width: 100 },
+    { field: 'rank', headerName: t('competitors.columns.rank'), width: 100 },
+    { field: 'rating', headerName: t('competitors.columns.rating'), width: 80, type: 'number' },
+    { field: 'country', headerName: t('competitors.columns.country'), width: 110 },
+    { field: 'region', headerName: t('competitors.columns.region'), width: 110 },
+    { field: 'city', headerName: t('competitors.columns.city'), width: 110 },
+    { field: 'phone', headerName: t('competitors.columns.phone'), width: 130 },
+    { field: 'email', headerName: t('competitors.columns.email'), width: 180 },
+    { field: 'startTime', headerName: t('competitors.columns.startTime'), width: 130, renderCell: (params) => <StartTimeCell value={params.value as number} /> },
+    { field: 'timeAdjustment', headerName: t('competitors.columns.timeAdjustment'), width: 90, type: 'number' },
+    { field: 'dsq', headerName: 'DSQ', width: 60, type: 'boolean' },
+    { field: 'dns', headerName: 'DNS', width: 60, type: 'boolean' },
+    { field: 'dnf', headerName: 'DNF', width: 60, type: 'boolean' },
+    { field: 'outOfRank', headerName: t('competitors.columns.outOfRank'), width: 100, type: 'boolean' },
+    { field: 'entryNumber', headerName: t('competitors.columns.entryNumber'), width: 110 },
+    { field: 'price', headerName: t('competitors.columns.price'), width: 80, type: 'number' },
+    { field: 'isPaid', headerName: t('competitors.columns.paid'), width: 70, type: 'boolean' },
+    { field: 'isCheckin', headerName: t('competitors.columns.checkin'), width: 80, type: 'boolean' },
+    { field: 'notes', headerName: t('common.notes'), flex: 1, minWidth: 150 },
+  ];
+}
+
+type StatusFilter = '' | 'ok' | 'dsq' | 'dnf' | 'dns';
+
+interface Filters {
+  groupId: string;
+  courseId: string;
+  teamId: string;
+  status: StatusFilter;
+  paid: boolean;
+  checkin: boolean;
+}
+
+const EMPTY_FILTERS: Filters = {
+  groupId: '', courseId: '', teamId: '', status: '', paid: false, checkin: false,
+};
+
+const STATUS_LABELS: Record<Exclude<StatusFilter, ''>, string> = {
+  ok: 'OK', dsq: 'DSQ', dnf: 'DNF', dns: 'DNS',
+};
+
+function matchesStatus(c: Competitor, status: StatusFilter): boolean {
+  switch (status) {
+    case 'ok': return c.dsq !== 1 && c.dns !== 1 && c.dnf !== 1;
+    case 'dsq': return c.dsq === 1;
+    case 'dnf': return c.dnf === 1;
+    case 'dns': return c.dns === 1;
+    default: return true;
+  }
+}
 
 export function CompetitorsPage() {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -129,7 +171,11 @@ export function CompetitorsPage() {
   // UI state
   const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
   const [searchText, setSearchText] = useState('');
-  const [filterActive, setFilterActive] = useState(false);
+  const [filterAnchor, setFilterAnchor] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
 
@@ -165,6 +211,9 @@ export function CompetitorsPage() {
     ),
   }), []);
 
+  const columnDefs = useMemo(() => buildColumnDefs(t), [t]);
+  const baseColumns = useMemo(() => buildBaseColumns(t), [t]);
+
   const {
     visibleColumns,
     columnState,
@@ -172,7 +221,7 @@ export function CompetitorsPage() {
     setColumnVisible,
     moveColumn,
     resetToDefaults,
-  } = useColumnSettings('competitors', COLUMN_DEFS, BASE_COLUMNS);
+  } = useColumnSettings('competitors', columnDefs, baseColumns);
 
   // Append actions column after the managed columns
   const columns = useMemo(
@@ -191,26 +240,73 @@ export function CompetitorsPage() {
       const data = await api.get<Competitor[]>(`/api/events/${eventId}/competitors`);
       setCompetitors(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load competitors');
+      setError(err instanceof Error ? err.message : t('competitors.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, t]);
 
   useEffect(() => {
     fetchCompetitors();
   }, [fetchCompetitors]);
 
-  // Client-side text search
+  // Load groups/courses/teams for the filter panel dropdowns and chip labels.
+  useEffect(() => {
+    if (!eventId) return;
+    Promise.all([
+      api.get<Group[]>(`/api/events/${eventId}/groups`),
+      api.get<Course[]>(`/api/events/${eventId}/courses`),
+      api.get<Team[]>(`/api/events/${eventId}/teams`),
+    ])
+      .then(([g, c, t]) => { setGroups(g); setCourses(c); setTeams(t); })
+      .catch(() => { /* non-critical */ });
+  }, [eventId]);
+
+  // Client-side text search + filter panel
   const filteredCompetitors = useMemo(() => {
-    if (!searchText.trim()) return competitors;
-    const q = searchText.toLowerCase();
-    return competitors.filter((c) =>
-      [c.lastName, c.firstName, c.middleName, c.bib, c.card1, c.card2, c.city, c.country, c.email, c.phone, c.entryNumber].some(
-        (v) => v && v.toLowerCase().includes(q),
-      ),
-    );
-  }, [competitors, searchText]);
+    let rows = competitors;
+    const q = searchText.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((c) =>
+        [c.lastName, c.firstName, c.middleName, c.bib, c.card1, c.card2, c.city, c.country, c.email, c.phone, c.entryNumber].some(
+          (v) => v && v.toLowerCase().includes(q),
+        ),
+      );
+    }
+    if (filters.groupId) rows = rows.filter((c) => c.groupId === filters.groupId);
+    if (filters.courseId) rows = rows.filter((c) => c.courseId === filters.courseId);
+    if (filters.teamId) rows = rows.filter((c) => c.teamId === filters.teamId);
+    if (filters.status) rows = rows.filter((c) => matchesStatus(c, filters.status));
+    if (filters.paid) rows = rows.filter((c) => c.isPaid === 1);
+    if (filters.checkin) rows = rows.filter((c) => c.isCheckin === 1);
+    return rows;
+  }, [competitors, searchText, filters]);
+
+  // Active-filter chips (removable)
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (filters.groupId) {
+      chips.push({ key: 'group', label: t('competitors.chips.group', { value: groups.find((g) => g.id === filters.groupId)?.name ?? filters.groupId }), clear: () => setFilters((f) => ({ ...f, groupId: '' })) });
+    }
+    if (filters.courseId) {
+      chips.push({ key: 'course', label: t('competitors.chips.course', { value: courses.find((c) => c.id === filters.courseId)?.name ?? filters.courseId }), clear: () => setFilters((f) => ({ ...f, courseId: '' })) });
+    }
+    if (filters.teamId) {
+      chips.push({ key: 'team', label: t('competitors.chips.team', { value: teams.find((tm) => tm.id === filters.teamId)?.name ?? filters.teamId }), clear: () => setFilters((f) => ({ ...f, teamId: '' })) });
+    }
+    if (filters.status) {
+      chips.push({ key: 'status', label: t('competitors.chips.status', { value: STATUS_LABELS[filters.status] }), clear: () => setFilters((f) => ({ ...f, status: '' })) });
+    }
+    if (filters.paid) {
+      chips.push({ key: 'paid', label: t('competitors.chips.paid'), clear: () => setFilters((f) => ({ ...f, paid: false })) });
+    }
+    if (filters.checkin) {
+      chips.push({ key: 'checkin', label: t('competitors.chips.checkedIn'), clear: () => setFilters((f) => ({ ...f, checkin: false })) });
+    }
+    return chips;
+  }, [filters, groups, courses, teams, t]);
+
+  const hasActiveFilters = activeChips.length > 0;
 
   // Toolbar more menu
   const moreMenu: DropDownMenuConfig = useMemo(
@@ -218,22 +314,22 @@ export function CompetitorsPage() {
       items: [
         {
           icon: <FileUploadIcon />,
-          text: 'Import',
+          text: t('common.import'),
           action: () => setImportOpen(true),
         },
         {
           icon: <FileDownloadIcon />,
-          text: 'Export',
+          text: t('common.export'),
           action: () => {},
         },
         {
           icon: <TableChartIcon />,
-          text: 'Table settings',
+          text: t('competitors.tableSettings'),
           action: () => setColumnDialogOpen(true),
         },
       ],
     }),
-    [],
+    [t],
   );
 
   // Row action menu handlers
@@ -284,22 +380,22 @@ export function CompetitorsPage() {
       items: [
         {
           icon: <EditIcon />,
-          text: 'Edit',
+          text: t('common.edit'),
           action: handleEdit,
         },
         {
           icon: <DeleteIcon />,
-          text: 'Delete',
+          text: t('common.delete'),
           nested: {
-            title: 'Delete competitor',
+            title: t('competitors.deleteTitle'),
             items: [
               {
                 Component: (
                   <DropDownMenuPrompt
-                    label={`Type "${menuCompetitor ? `${menuCompetitor.lastName} ${menuCompetitor.firstName}`.trim() : ''}" to confirm`}
-                    placeholder="Competitor name"
+                    label={t('competitors.confirmDelete.label', { name: menuCompetitor ? `${menuCompetitor.lastName} ${menuCompetitor.firstName}`.trim() : '' })}
+                    placeholder={t('competitors.confirmDelete.placeholder')}
                     confirmBtnProps={{
-                      text: 'Delete',
+                      text: t('common.delete'),
                       color: 'error',
                       onClick: (value: string) => {
                         const expected = menuCompetitor
@@ -310,7 +406,7 @@ export function CompetitorsPage() {
                     }}
                     cancelBtnProps={{
                       show: true,
-                      text: 'Cancel',
+                      text: t('common.cancel'),
                       onClick: handleRowMenuClose,
                     }}
                   />
@@ -322,7 +418,7 @@ export function CompetitorsPage() {
       ],
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [menuCompetitor?.id, menuCompetitor?.lastName, menuCompetitor?.firstName, rowMenuCompetitorId],
+    [menuCompetitor?.id, menuCompetitor?.lastName, menuCompetitor?.firstName, rowMenuCompetitorId, t],
   );
 
   return (
@@ -341,7 +437,7 @@ export function CompetitorsPage() {
         <TextField
           size="small"
           variant="outlined"
-          placeholder="Search..."
+          placeholder={t('common.searchPlaceholder')}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           slotProps={{
@@ -358,13 +454,14 @@ export function CompetitorsPage() {
             order: isMobile ? 1 : 0,
           }}
         />
-        <Tooltip title="Filter" arrow>
+        <Tooltip title={t('common.filter')} arrow>
           <IconButton
-            onClick={() => setFilterActive(!filterActive)}
+            onClick={(e) => setFilterAnchor(e.currentTarget)}
             sx={{
               width: 40,
               height: 40,
-              bgcolor: filterActive ? 'action.selected' : 'transparent',
+              bgcolor: (Boolean(filterAnchor) || hasActiveFilters) ? 'action.selected' : 'transparent',
+              color: hasActiveFilters ? 'primary.main' : 'inherit',
               borderRadius: 1,
               border: 1,
               borderColor: 'divider',
@@ -377,7 +474,7 @@ export function CompetitorsPage() {
         {/* Selected (N) — conditional */}
         {selectedCount > 0 && (
           <Button variant="outlined" size="small" sx={{ height: 40 }}>
-            Selected ({selectedCount})
+            {t('competitors.selected', { count: selectedCount })}
           </Button>
         )}
 
@@ -386,10 +483,10 @@ export function CompetitorsPage() {
 
         {/* Right group — Add new + more menu */}
         <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{ height: 40 }} onClick={handleAddNew}>
-          Add new
+          {t('competitors.addNew')}
         </Button>
 
-        <Tooltip title="More actions" arrow>
+        <Tooltip title={t('competitors.moreActions')} arrow>
           <IconButton
             onClick={(e) => setMoreAnchor(e.currentTarget)}
             sx={{ width: 40, height: 40, borderRadius: 1, border: 1, borderColor: 'divider' }}
@@ -409,9 +506,83 @@ export function CompetitorsPage() {
         />
       </Box>
 
+      {/* Filter panel */}
+      <Popover
+        open={Boolean(filterAnchor)}
+        anchorEl={filterAnchor}
+        onClose={() => setFilterAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        <Box sx={{ p: 2, width: 280, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <TextField
+            select size="small" label={t('competitors.columns.group')}
+            value={filters.groupId}
+            onChange={(e) => setFilters((f) => ({ ...f, groupId: e.target.value }))}
+          >
+            <MenuItem value="">{t('common.all')}</MenuItem>
+            {groups.map((g) => (
+              <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select size="small" label={t('competitors.columns.course')}
+            value={filters.courseId}
+            onChange={(e) => setFilters((f) => ({ ...f, courseId: e.target.value }))}
+          >
+            <MenuItem value="">{t('common.all')}</MenuItem>
+            {courses.map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select size="small" label={t('competitors.columns.team')}
+            value={filters.teamId}
+            onChange={(e) => setFilters((f) => ({ ...f, teamId: e.target.value }))}
+          >
+            <MenuItem value="">{t('common.all')}</MenuItem>
+            {teams.map((tm) => (
+              <MenuItem key={tm.id} value={tm.id}>{tm.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select size="small" label={t('competitors.filters.status')}
+            value={filters.status}
+            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as StatusFilter }))}
+          >
+            <MenuItem value="">{t('competitors.filters.any')}</MenuItem>
+            <MenuItem value="ok">OK</MenuItem>
+            <MenuItem value="dsq">DSQ</MenuItem>
+            <MenuItem value="dnf">DNF</MenuItem>
+            <MenuItem value="dns">DNS</MenuItem>
+          </TextField>
+          <FormControlLabel
+            control={<Checkbox size="small" checked={filters.paid} onChange={(_, v) => setFilters((f) => ({ ...f, paid: v }))} />}
+            label={t('competitors.filters.paidOnly')}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={filters.checkin} onChange={(_, v) => setFilters((f) => ({ ...f, checkin: v }))} />}
+            label={t('competitors.filters.checkinOnly')}
+          />
+          <Button size="small" onClick={() => setFilters(EMPTY_FILTERS)} disabled={!hasActiveFilters}>
+            {t('competitors.filters.clearAll')}
+          </Button>
+        </Box>
+      </Popover>
+
+      {/* Active filter chips */}
+      {hasActiveFilters && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, pb: 1 }}>
+          {activeChips.map((chip) => (
+            <Chip key={chip.key} label={chip.label} size="small" onDelete={chip.clear} />
+          ))}
+          <Chip label={t('competitors.filters.clearAll')} size="small" variant="outlined" onClick={() => setFilters(EMPTY_FILTERS)} />
+        </Box>
+      )}
+
       {/* Error */}
       {error && (
-        <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchCompetitors}>Retry</Button>}>
+        <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchCompetitors}>{t('common.retry')}</Button>}>
           {error}
         </Alert>
       )}
@@ -424,7 +595,7 @@ export function CompetitorsPage() {
         fullWidth
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
-          Table columns
+          {t('competitors.tableColumns')}
           <IconButton size="small" onClick={() => setColumnDialogOpen(false)}>
             <CloseIcon fontSize="small" />
           </IconButton>

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   useState,
   useRef,
@@ -5,6 +6,7 @@ import {
   useEffect,
   useMemo,
 } from "react";
+import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
@@ -44,17 +46,17 @@ const DRAG_PIXELS_PER_STEP = 5;
 
 /** Configuration for the four time sections: HH:mm:ss.cs */
 const SECTIONS = [
-  { key: "hours", min: 0, max: 23, placeholder: "HH", label: "Hours" },
-  { key: "minutes", min: 0, max: 59, placeholder: "mm", label: "Minutes" },
-  { key: "seconds", min: 0, max: 59, placeholder: "ss", label: "Seconds" },
-  { key: "centiseconds", min: 0, max: 99, placeholder: "00", label: "Centiseconds" },
+  { key: "hours", min: 0, max: 23, placeholder: "HH", label: "components.time.hours" },
+  { key: "minutes", min: 0, max: 59, placeholder: "mm", label: "components.time.minutes" },
+  { key: "seconds", min: 0, max: 59, placeholder: "ss", label: "components.time.seconds" },
+  { key: "centiseconds", min: 0, max: 99, placeholder: "00", label: "components.time.centiseconds" },
 ] as const;
 
 const SEPARATORS = [":", ":", "."];
 const EMPTY_SECTIONS = ["", "", "", ""];
 
-/** Configuration for the day segment (0d–99d). */
-const DAY_CONFIG = { min: 0, max: 99, placeholder: "0", label: "Days" };
+/** Configuration for the day segment (0d–99d). Label is an i18n key. */
+const DAY_CONFIG = { min: 0, max: 99, placeholder: "0", label: "components.time.days" };
 
 /** Build a timestamp from section strings + date string + timezone. */
 function sectionsToTimestamp(
@@ -140,6 +142,7 @@ function SectionInput({
   formatValue = pad,
   onDragEnd,
 }: SectionInputProps) {
+  const { t } = useTranslation();
   const localRef = useRef<HTMLInputElement | null>(null);
   // Guard: prevents rAF-based select() from interfering with ongoing typing.
   const selectAllowed = useRef(true);
@@ -309,7 +312,7 @@ function SectionInput({
         placeholder={config.placeholder}
         disabled={disabled}
         inputMode="numeric"
-        aria-label={config.label}
+        aria-label={t(config.label)}
         onMouseDown={handleMouseDown}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
@@ -363,6 +366,7 @@ function DateSettingsModal({
   initialDate,
   minDate,
 }: DateModalProps) {
+  const { t } = useTranslation();
   const [date, setDate] = useState(initialDate);
 
   useEffect(() => {
@@ -384,7 +388,7 @@ function DateSettingsModal({
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Dialog open={open} onClose={onClose} maxWidth="xs">
-        <DialogTitle sx={{ textAlign: "center" }}>Change Date</DialogTitle>
+        <DialogTitle sx={{ textAlign: "center" }}>{t("components.changeDate")}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
             <DatePicker
@@ -401,7 +405,7 @@ function DateSettingsModal({
         </DialogContent>
         <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
           <Button onClick={handleApply} variant="contained">
-            OK
+            {t("common.ok")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -440,6 +444,7 @@ export default function TimeInput({
   fullWidth = false,
   sx,
 }: TimeInputProps) {
+  const { t } = useTranslation();
   // ── Local editing state ───────────────────────────────────────────
   // null = not editing (display from value prop).
   // string[] = user is actively editing sections.
@@ -828,7 +833,7 @@ export default function TimeInput({
               <Box
                 ref={containerRef}
                 role="group"
-                aria-label="Time input"
+                aria-label={t("components.timeInput")}
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -918,7 +923,7 @@ export default function TimeInput({
                 onClick={handleModalOpen}
                 disabled={disabled}
                 edge="end"
-                aria-label="Change date"
+                aria-label={t("components.changeDate")}
                 sx={{ color: "inherit" }}
               >
                 <TodayIcon fontSize="small" />

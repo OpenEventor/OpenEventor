@@ -124,21 +124,23 @@ const DropDownMenu: FC<DropDownMenuProps> = ({
       anchorPosition={anchorPosition}
       anchorOrigin={anchorOrigin}
       transformOrigin={transformOrigin}
-      PaperProps={{
-        sx: {
-          width,
-          maxHeight,
-          borderRadius: 2,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        },
-        ref: paperRef,
-        onClick: handleMenuEvent,
-        onMouseDown: handleMenuEvent,
-        onContextMenu: (event: ReactMouseEvent) => {
-          event.preventDefault();
-        },
+      slotProps={{
+        paper: {
+          sx: {
+            width,
+            maxHeight,
+            borderRadius: 2,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          },
+          ref: paperRef,
+          onClick: handleMenuEvent,
+          onMouseDown: handleMenuEvent,
+          onContextMenu: (event: ReactMouseEvent) => {
+            event.preventDefault();
+          },
+        }
       }}
     >
       <Stack sx={{ width: "100%", height: "100%", minHeight: 0 }}>
@@ -163,15 +165,14 @@ const DropDownMenu: FC<DropDownMenuProps> = ({
             </Box>
             <Typography
               variant="subtitle2"
-              color="text.primary"
               noWrap
               sx={{
+                color: "text.primary",
                 flex: 1,
                 textAlign: "center",
                 fontSize: "0.8rem",
-                fontWeight: 600,
-              }}
-            >
+                fontWeight: 600
+              }}>
               {currentMenu.title}
             </Typography>
             <Box
@@ -232,10 +233,11 @@ const DropDownMenu: FC<DropDownMenuProps> = ({
                     primary={
                       <Typography
                         variant="body2"
-                        color="text.primary"
                         noWrap
-                        sx={{ fontSize: "0.85rem" }}
-                      >
+                        sx={{
+                          color: "text.primary",
+                          fontSize: "0.85rem"
+                        }}>
                         {item.text}
                       </Typography>
                     }

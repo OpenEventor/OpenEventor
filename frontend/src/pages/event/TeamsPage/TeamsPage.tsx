@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Box,
@@ -11,7 +12,7 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  DeleteOutline as DeleteIcon,
+  DeleteOutlined as DeleteIcon,
   Search as SearchIcon,
   MoreHoriz as MoreHorizIcon,
 } from '@mui/icons-material';
@@ -23,15 +24,9 @@ import { api } from '../../../api/client.ts';
 import type { Team } from '../../../api/types.ts';
 import { TeamDialog } from './TeamDialog.tsx';
 
-const COLUMNS: GridColDef[] = [
-  { field: 'name', headerName: 'Name', flex: 1, minWidth: 150 },
-  { field: 'country', headerName: 'Country', width: 120 },
-  { field: 'region', headerName: 'Region', width: 120 },
-  { field: 'city', headerName: 'City', width: 120 },
-];
-
 export function TeamsPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const { t } = useTranslation();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,11 +46,11 @@ export function TeamsPage() {
       const data = await api.get<Team[]>(`/api/events/${eventId}/teams`);
       setTeams(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load teams');
+      setError(err instanceof Error ? err.message : t('teams.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -76,7 +71,14 @@ export function TeamsPage() {
     ),
   }), []);
 
-  const columns = useMemo(() => [...COLUMNS, actionsColumn], [actionsColumn]);
+  const baseColumns: GridColDef[] = useMemo(() => [
+    { field: 'name', headerName: t('common.name'), flex: 1, minWidth: 150 },
+    { field: 'country', headerName: t('teams.country'), width: 120 },
+    { field: 'region', headerName: t('teams.region'), width: 120 },
+    { field: 'city', headerName: t('teams.city'), width: 120 },
+  ], [t]);
+
+  const columns = useMemo(() => [...baseColumns, actionsColumn], [baseColumns, actionsColumn]);
 
   const handleRowMenuClose = () => { setRowMenuAnchor(null); setRowMenuId(null); };
 
@@ -99,18 +101,18 @@ export function TeamsPage() {
 
   const rowMenu: DropDownMenuConfig = useMemo(() => ({
     items: [
-      { icon: <EditIcon />, text: 'Edit', action: handleEdit },
+      { icon: <EditIcon />, text: t('common.edit'), action: handleEdit },
       {
-        icon: <DeleteIcon />, text: 'Delete',
+        icon: <DeleteIcon />, text: t('common.delete'),
         nested: {
-          title: 'Delete team',
+          title: t('teams.deleteTitle'),
           items: [{
             Component: (
               <DropDownMenuPrompt
-                label={`Type "${menuItem?.name ?? ''}" to confirm`}
-                placeholder="Team name"
-                confirmBtnProps={{ text: 'Delete', color: 'error', onClick: (v: string) => { if (v === (menuItem?.name ?? '')) handleDelete(); } }}
-                cancelBtnProps={{ show: true, text: 'Cancel', onClick: handleRowMenuClose }}
+                label={t('teams.deleteConfirmLabel', { name: menuItem?.name ?? '' })}
+                placeholder={t('teams.namePlaceholder')}
+                confirmBtnProps={{ text: t('common.delete'), color: 'error', onClick: (v: string) => { if (v === (menuItem?.name ?? '')) handleDelete(); } }}
+                cancelBtnProps={{ show: true, text: t('common.cancel'), onClick: handleRowMenuClose }}
               />
             ),
           }],
@@ -126,18 +128,18 @@ export function TeamsPage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, flexWrap: 'wrap' }}>
         <TextField
-          size="small" variant="outlined" placeholder="Search..."
+          size="small" variant="outlined" placeholder={t('common.searchPlaceholder')}
           value={searchText} onChange={(e) => setSearchText(e.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> } }}
           sx={{ width: 220 }}
         />
         <Box sx={{ flexGrow: 1 }} />
         <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{ height: 40 }} onClick={() => { setEditingItem(null); setDialogOpen(true); }}>
-          Add new
+          {t('teams.addNew')}
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>Retry</Button>}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 1 }} action={<Button onClick={fetchData}>{t('common.retry')}</Button>}>{error}</Alert>}
 
       <DropDownMenu open={Boolean(rowMenuAnchor)} onClose={handleRowMenuClose} menu={rowMenu} anchorEl={rowMenuAnchor} width={220} />
       <TeamDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditingItem(null); }} onSaved={handleSaved} eventId={eventId || ''} team={editingItem} />

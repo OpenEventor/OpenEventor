@@ -40,10 +40,12 @@ const DropDownMenuSwitcher: FC<DropDownMenuSwitcherProps> = ({
     )}
     <Typography
       variant="body2"
-      color="text.primary"
       noWrap
-      sx={{ fontSize: "0.85rem", flex: 1 }}
-    >
+      sx={{
+        color: "text.primary",
+        fontSize: "0.85rem",
+        flex: 1
+      }}>
       {text}
     </Typography>
     <Switch

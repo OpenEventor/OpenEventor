@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Box, Typography, useTheme } from '@mui/material';
 import type { Passing } from '../../api/types';
 import { useEvent } from '../../contexts/EventContext';

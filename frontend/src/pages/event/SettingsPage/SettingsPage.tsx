@@ -1,26 +1,32 @@
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const { settings, loading } = useEvent();
   const entries = Object.entries(settings);
 
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Settings
+        {t('settings.title')}
       </Typography>
       {loading ? (
-        <Typography color="text.secondary">Loading...</Typography>
+        <Typography sx={{
+          color: "text.secondary"
+        }}>{t('common.loading')}</Typography>
       ) : entries.length === 0 ? (
-        <Typography color="text.secondary">No settings found.</Typography>
+        <Typography sx={{
+          color: "text.secondary"
+        }}>{t('settings.empty')}</Typography>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Key</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Value</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{t('settings.key')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{t('settings.value')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

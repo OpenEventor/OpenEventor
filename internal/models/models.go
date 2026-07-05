@@ -18,6 +18,9 @@ type Event struct {
 	Status      string `json:"status" db:"status"`
 	Token       string `json:"token,omitempty" db:"token"`
 	CreatedAt   string `json:"createdAt" db:"created_at"`
+	// ModifiedAt is computed from the event .db file's modification time (not a
+	// stored column) — the real discriminator of recent activity.
+	ModifiedAt string `json:"modifiedAt,omitempty"`
 }
 
 // EventAccess links users to events with a role.
@@ -136,11 +139,26 @@ type Course struct {
 	UpdatedAt   string `json:"updatedAt" db:"updated_at"`
 }
 
+// Checkpoint is a first-class control point. `name` is the canonical, swappable
+// identifier referenced by name from courses.checkpoints and passings.checkpoint
+// (no id indirection). Latitude/Longitude are optional (nil = no coordinates).
+type Checkpoint struct {
+	ID          string   `json:"id" db:"id"`
+	Name        string   `json:"name" db:"name"`
+	Latitude    *float64 `json:"latitude" db:"latitude"`
+	Longitude   *float64 `json:"longitude" db:"longitude"`
+	Description string   `json:"description" db:"description"`
+	SortOrder   int      `json:"sortOrder" db:"sort_order"`
+	CreatedAt   string   `json:"createdAt" db:"created_at"`
+	UpdatedAt   string   `json:"updatedAt" db:"updated_at"`
+}
+
 // Passing is a timing mark from an external device.
 type Passing struct {
 	ID         string  `json:"id" db:"id"`
 	Card       string  `json:"card" db:"card"`
 	Checkpoint string  `json:"checkpoint" db:"checkpoint"`
+	RawCode    string  `json:"rawCode" db:"raw_code"` // original reader number, audit only
 	Timestamp  float64 `json:"timestamp" db:"timestamp"`
 	Enabled    int     `json:"enabled" db:"enabled"`
 	Source     string  `json:"source" db:"source"`

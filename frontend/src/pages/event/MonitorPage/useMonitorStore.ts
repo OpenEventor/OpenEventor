@@ -335,7 +335,6 @@ export function useMonitorStore() {
   );
 
   /** Get the current grouped view. Recomputed on every call (driven by version). */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const groups = buildGroups(store);
   void version; // Used to trigger re-computation when version changes.
 

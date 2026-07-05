@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Box, Typography } from '@mui/material';
 import logoSvg from '../../assets/logo.svg';
 
@@ -7,6 +8,7 @@ interface PrivacyScreenProps {
 }
 
 export function PrivacyScreen({ open, onClose }: PrivacyScreenProps) {
+  const { t } = useTranslation();
   if (!open) return null;
 
   return (
@@ -41,7 +43,7 @@ export function PrivacyScreen({ open, onClose }: PrivacyScreenProps) {
         variant="h3"
         sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 300 }}
       >
-        Nothing interesting here. Thank you.
+        {t('components.privacyMessage')}
       </Typography>
     </Box>
   );

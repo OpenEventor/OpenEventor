@@ -67,6 +67,14 @@ func RunMigrations(db *sql.DB, scope string) error {
 			return fmt.Errorf("execute migration %s: %w", entry.Name(), err)
 		}
 
+		// Run a Go post-migration hook if one is registered for this file
+		// (e.g. materializing checkpoints, which needs JSON parsing).
+		if hook := migrationHooks[scope+"/"+entry.Name()]; hook != nil {
+			if err := hook(db); err != nil {
+				return fmt.Errorf("run migration hook %s: %w", entry.Name(), err)
+			}
+		}
+
 		// Record as applied.
 		if _, err := db.Exec(
 			"INSERT INTO schema_migrations (filename, applied_at) VALUES (?, ?)",

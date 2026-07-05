@@ -8,6 +8,8 @@ import { EventsListPage } from './pages/EventsListPage/EventsListPage.tsx';
 import { CompetitorsPage } from './pages/event/CompetitorsPage/CompetitorsPage.tsx';
 import { MonitorPage } from './pages/event/MonitorPage/MonitorPage.tsx';
 import { ProtocolsPage } from './pages/event/ProtocolsPage/ProtocolsPage.tsx';
+import { CheckpointsPage } from './pages/event/CheckpointsPage/CheckpointsPage.tsx';
+import { ProblemsPage } from './pages/event/ProblemsPage/ProblemsPage.tsx';
 import { DistancesPage } from './pages/event/DistancesPage/DistancesPage.tsx';
 import { GroupsPage } from './pages/event/GroupsPage/GroupsPage.tsx';
 import { TeamsPage } from './pages/event/TeamsPage/TeamsPage.tsx';
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
           { path: 'competitors', element: <CompetitorsPage /> },
           { path: 'monitor', element: <MonitorPage /> },
           { path: 'protocols', element: <ProtocolsPage /> },
+          { path: 'checkpoints', element: <CheckpointsPage /> },
+          { path: 'problems', element: <ProblemsPage /> },
           { path: 'distances', element: <DistancesPage /> },
           { path: 'groups', element: <GroupsPage /> },
           { path: 'passings', element: <PassingsPage /> },

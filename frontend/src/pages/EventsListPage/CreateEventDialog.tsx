@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogTitle,
@@ -45,6 +46,7 @@ interface CreateEventDialogProps {
 }
 
 export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [date, setDate] = useState<Dayjs | null>(null);
   const [timezone, setTimezone] = useState(getBrowserTimezone);
@@ -53,15 +55,15 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      setError('Event name is required');
+      setError(t('events.validation.nameRequired'));
       return;
     }
     if (!date?.isValid()) {
-      setError('Date is required');
+      setError(t('events.validation.dateRequired'));
       return;
     }
     if (!timezone) {
-      setError('Timezone is required');
+      setError(t('events.validation.timezoneRequired'));
       return;
     }
     setLoading(true);
@@ -77,7 +79,7 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
       setTimezone(getBrowserTimezone());
       onCreated(event);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create event');
+      setError(err instanceof Error ? err.message : t('events.errors.create'));
     } finally {
       setLoading(false);
     }
@@ -94,11 +96,11 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Create Event</DialogTitle>
+      <DialogTitle>{t('events.createEvent')}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
-          label="Event name"
+          label={t('events.eventName')}
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
@@ -107,7 +109,7 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
-            label="Date"
+            label={t('common.date')}
             value={date}
             onChange={(value) => setDate(value)}
             disabled={loading}
@@ -132,19 +134,19 @@ export function CreateEventDialog({ open, onClose, onCreated }: CreateEventDialo
           getOptionLabel={(tz) => TZ_LABELS.get(tz) ?? tz}
           disableClearable
           disabled={loading}
-          renderInput={(params) => <TextField {...params} label="Timezone" variant="filled" />}
+          renderInput={(params) => <TextField {...params} label={t('events.timezone')} variant="filled" />}
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose} disabled={loading}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button
           variant="contained"
           onClick={handleCreate}
           disabled={loading}
         >
-          {loading ? 'Creating...' : 'Create'}
+          {loading ? t('events.creating') : t('common.create')}
         </Button>
       </DialogActions>
     </Dialog>

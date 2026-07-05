@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Autocomplete, Box, TextField } from "@mui/material";
 import type { TextFieldProps } from "@mui/material";
 import countries from "./countries.json";
@@ -50,7 +51,7 @@ export interface CountryPickerProps {
 export default function CountryPicker({
   value,
   onChange,
-  label = "Country",
+  label,
   variant = "filled",
   size = "small",
   disabled = false,
@@ -58,6 +59,8 @@ export default function CountryPicker({
   error,
   helperText,
 }: CountryPickerProps) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t("components.country");
   const selected = resolveCountry(value);
 
   return (
@@ -79,7 +82,11 @@ export default function CountryPicker({
       getOptionLabel={(option) =>
         typeof option === "string" ? option : option.name
       }
-      isOptionEqualToValue={(option, val) => option.alpha2 === val.alpha2}
+      isOptionEqualToValue={(option, val) =>
+        typeof option !== "string" &&
+        typeof val !== "string" &&
+        option.alpha2 === val.alpha2
+      }
       filterOptions={(options, { inputValue }) => {
         const q = inputValue.toLowerCase();
         if (!q) return options;
@@ -108,20 +115,22 @@ export default function CountryPicker({
         <TextField
           {...params}
           variant={variant}
-          label={label}
+          label={resolvedLabel}
           size={size}
           error={error}
           helperText={helperText}
           disabled={disabled}
           slotProps={{
+            ...params.slotProps,
+
             input: {
-              ...params.InputProps,
+              ...params.slotProps.input,
               startAdornment: selected ? (
                 <Box sx={{ display: "flex", alignItems: "center", ml: 0.5 }}>
                   <FlagImg code={selected.alpha2} size={18} />
                 </Box>
               ) : undefined,
-            },
+            }
           }}
         />
       )}

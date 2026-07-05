@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { Box, Chip, IconButton, Stack, Typography } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -33,6 +34,7 @@ function computeMaxUpdatedAt(passings: Passing[], competitors: Competitor[]): st
 }
 
 export function MonitorPage() {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,11 @@ export function MonitorPage() {
   const { play: playSound, muted, toggleMute } = usePassingSound();
   const lastUpdatedAt = useRef('');
   const [showDisabled, setShowDisabled] = useState(true);
+  // Live "with troubles" count, fetched from the computed /problems endpoint
+  // (single source of truth — the Go engine). Debounced so a burst of punches
+  // triggers at most one refresh.
+  const [troubles, setTroubles] = useState(0);
+  const troublesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [coursesData, setCoursesData] = useState<Course[]>([]);
   const [groupsData, setGroupsData] = useState<Group[]>([]);
@@ -116,7 +123,7 @@ export function MonitorPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load data");
+          setError(err instanceof Error ? err.message : t("monitor.loadError"));
           setLoading(false);
         }
       }
@@ -152,6 +159,34 @@ export function MonitorPage() {
     store.bump();
   }, [saveScrollAnchor, store]);
 
+  /** Fetch the computed problem count (competitor/card-level "troubles"). */
+  const refreshTroubles = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      const res = await api.get<{ problems: { subject: { type: string } }[] }>(
+        `/api/events/${eventId}/problems`,
+      );
+      const n = res.problems.filter(
+        (p) => p.subject.type === 'competitor' || p.subject.type === 'card',
+      ).length;
+      setTroubles(n);
+    } catch {
+      // Non-fatal — leave the previous count.
+    }
+  }, [eventId]);
+
+  /** Debounced trouble refresh so a burst of punches triggers one fetch. */
+  const scheduleTroublesRefresh = useCallback(() => {
+    if (troublesTimer.current) clearTimeout(troublesTimer.current);
+    troublesTimer.current = setTimeout(() => { void refreshTroubles(); }, 1500);
+  }, [refreshTroubles]);
+
+  // Initial trouble count once data has loaded; clear the timer on unmount.
+  useEffect(() => {
+    if (!loading && !error) void refreshTroubles();
+    return () => { if (troublesTimer.current) clearTimeout(troublesTimer.current); };
+  }, [loading, error, refreshTroubles]);
+
   // Override renderLock.onUnlock to use anchored bump (store sets bare bump by default).
   useEffect(() => {
     renderLock.onUnlock = anchoredBump;
@@ -173,14 +208,17 @@ export function MonitorPage() {
   const handleSSE = useCallback(
     (msg: { event: string; data: unknown }) => {
       const changed = store.applySSE(msg.event, msg.data);
-      if (changed && playingRef.current && !renderLock.locked) {
-        anchoredBump();
-        if (msg.event === "passing") {
-          playSound();
+      if (changed) {
+        scheduleTroublesRefresh(); // update the count even while paused
+        if (playingRef.current && !renderLock.locked) {
+          anchoredBump();
+          if (msg.event === "passing") {
+            playSound();
+          }
         }
       }
     },
-    [store, playSound, anchoredBump],
+    [store, playSound, anchoredBump, scheduleTroublesRefresh],
   );
 
   // Incremental sync on SSE reconnect.
@@ -197,7 +235,8 @@ export function MonitorPage() {
     const newMax = computeMaxUpdatedAt(passings, competitors);
     if (newMax > lastUpdatedAt.current) lastUpdatedAt.current = newMax;
     if (playingRef.current && !renderLock.locked) anchoredBump();
-  }, [eventId, store, anchoredBump]);
+    scheduleTroublesRefresh();
+  }, [eventId, store, anchoredBump, scheduleTroublesRefresh]);
 
   // Full reload — clears store first (visual wipe), then re-fetches all data.
   const handleFullReload = useCallback(async () => {
@@ -214,7 +253,8 @@ export function MonitorPage() {
     setCoursesData(courses);
     setGroupsData(groups);
     lastUpdatedAt.current = computeMaxUpdatedAt(passings, competitors);
-  }, [eventId, store]);
+    scheduleTroublesRefresh();
+  }, [eventId, store, scheduleTroublesRefresh]);
 
   const { status: sseStatus, reconnect: sseReconnect } = useEventSSE({
     eventId: eventId ?? "",
@@ -246,13 +286,13 @@ export function MonitorPage() {
   });
 
   const settingsMenu: DropDownMenuConfig = useMemo(() => ({
-    title: "Settings",
+    title: t("monitor.settings"),
     items: [
       {
         Component: (
           <DropDownMenuSwitcher
             icon={showDisabled ? <VisibilityIcon /> : <VisibilityOffIcon />}
-            text="Show disabled"
+            text={t("monitor.showDisabled")}
             checked={showDisabled}
             onChange={setShowDisabled}
           />
@@ -262,7 +302,7 @@ export function MonitorPage() {
         Component: (
           <DropDownMenuSwitcher
             icon={muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
-            text="Play sound"
+            text={t("monitor.playSound")}
             checked={!muted}
             onChange={() => toggleMute()}
           />
@@ -270,16 +310,18 @@ export function MonitorPage() {
       },
       {
         icon: <RefreshIcon fontSize="small" />,
-        text: "Full reload",
+        text: t("monitor.fullReload"),
         action: handleFullReload,
       },
     ],
-  }), [showDisabled, muted, toggleMute, handleFullReload]);
+  }), [showDisabled, muted, toggleMute, handleFullReload, t]);
 
   if (loading) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography color="text.secondary">Loading monitor...</Typography>
+        <Typography sx={{
+          color: "text.secondary"
+        }}>{t("common.loading")}</Typography>
       </Box>
     );
   }
@@ -294,152 +336,190 @@ export function MonitorPage() {
 
   return (
     <MonitorProvider value={{ eventId: eventId!, courses: coursesMap, groups: groupsMap }}>
-    <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100% + 32px)", m: -2, overflow: "hidden" }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={{
-          px: 1,
-          height: 50,
-          gap: 1,
-          borderBottom: 1,
-          borderColor: "divider",
-          flexShrink: 0,
-        }}
-      >
-        <Chip
-          icon={<FiberManualRecordIcon />}
-          label={
-            sseStatus === "online"
-              ? "Online"
-              : sseStatus === "connecting"
-                ? "Connecting..."
-                : "Offline"
-          }
-          variant="outlined"
-          size="medium"
-          onClick={sseStatus === "offline" ? sseReconnect : undefined}
+      <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100% + 32px)", m: -2, overflow: "hidden" }}>
+        <Stack
+          direction="row"
           sx={{
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            cursor: sseStatus === "offline" ? "pointer" : "default",
-            "& .MuiChip-icon": {
-              fontSize: 12,
-              color:
-                sseStatus === "online"
-                  ? "success.main"
-                  : sseStatus === "connecting"
-                    ? "warning.main"
-                    : "error.main",
-            },
-          }}
-        />
+            alignItems: "center",
+            px: 1,
+            height: 50,
+            gap: 1,
+            borderBottom: 1,
+            borderColor: "divider",
+            flexShrink: 0
+          }}>
+          <Chip
+            icon={<FiberManualRecordIcon />}
+            label={
+              sseStatus === "online"
+                ? t("monitor.status.online")
+                : sseStatus === "connecting"
+                  ? t("monitor.status.connecting")
+                  : t("monitor.status.offline")
+            }
+            variant="outlined"
+            size="medium"
+            onClick={sseStatus === "offline" ? sseReconnect : undefined}
+            sx={{
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: sseStatus === "offline" ? "pointer" : "default",
+              "& .MuiChip-icon": {
+                fontSize: 12,
+                color:
+                  sseStatus === "online"
+                    ? "success.main"
+                    : sseStatus === "connecting"
+                      ? "warning.main"
+                      : "error.main",
+              },
+            }}
+          />
 
-        <IconButton
-          size="small"
-          onClick={handleTogglePlay}
-          color={playing ? "primary" : "warning"}
-          title={playing ? "Pause" : "Play"}
-        >
-          {playing ? (
-            <PauseIcon fontSize="small" />
-          ) : (
-            <PlayArrowIcon fontSize="small" />
-          )}
-        </IconButton>
+          <IconButton
+            size="small"
+            onClick={handleTogglePlay}
+            color={playing ? "primary" : "warning"}
+            title={playing ? t("monitor.pause") : t("monitor.play")}
+          >
+            {playing ? (
+              <PauseIcon fontSize="small" />
+            ) : (
+              <PlayArrowIcon fontSize="small" />
+            )}
+          </IconButton>
 
-        <IconButton
-          size="small"
-          onClick={(e) => setSettingsAnchor(e.currentTarget)}
-          title="Settings"
-          sx={{ ml: "auto" }}
-        >
-          <TuneIcon fontSize="small" />
-        </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => setSettingsAnchor(e.currentTarget)}
+            title={t("monitor.settings")}
+            sx={{ ml: "auto" }}
+          >
+            <TuneIcon fontSize="small" />
+          </IconButton>
 
-        <DropDownMenu
-          open={settingsAnchor !== null}
-          onClose={() => setSettingsAnchor(null)}
-          anchorEl={settingsAnchor}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-          width={220}
-          menu={settingsMenu}
-        />
-      </Stack>
+          <DropDownMenu
+            open={settingsAnchor !== null}
+            onClose={() => setSettingsAnchor(null)}
+            anchorEl={settingsAnchor}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            width={220}
+            menu={settingsMenu}
+          />
+        </Stack>
 
-      <Box
-        ref={parentRef}
-        sx={{
-          flex: 1,
-          overflow: "auto",
-          position: "relative",
-        }}
-      >
         <Box
+          ref={parentRef}
           sx={{
-            height: virtualizer.getTotalSize(),
-            width: "100%",
+            flex: 1,
+            overflow: "auto",
             position: "relative",
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const group = displayGroups[virtualRow.index];
-            return (
-              <Box
-                key={group.key}
-                sx={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: virtualRow.size,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <CompetitorRow group={group} allPassings={allPassingsByKey.get(group.key) ?? group.passings} height={ROW_HEIGHT} />
-              </Box>
-            );
-          })}
+          <Box
+            sx={{
+              height: virtualizer.getTotalSize(),
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const group = displayGroups[virtualRow.index];
+              return (
+                <Box
+                  key={group.key}
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: virtualRow.size,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <CompetitorRow group={group} allPassings={allPassingsByKey.get(group.key) ?? group.passings} height={ROW_HEIGHT} />
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={{
-          px: 1,
-          height: 40,
-          minHeight: 40,
-          maxHeight: 40,
-          gap: 0.5,
-          borderTop: 1,
-          borderColor: "divider",
-          flexShrink: 0,
-          flexGrow: 0,
-        }}
-      >
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
-          Total passings: {store.stats.totalPassings}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>|</Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
-          Active: {store.stats.activePassings}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>|</Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
-          Disabled: {store.stats.disabledPassings}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>|</Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
-          Competitors: {store.stats.competitors}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>|</Typography>
-        <Typography variant="caption" sx={{ fontSize: "0.75rem", color: store.stats.withTroubles > 0 ? "error.main" : "text.secondary" }}>
-          With troubles: {store.stats.withTroubles}
-        </Typography>
-      </Stack>
-    </Box>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            px: 1,
+            height: 40,
+            minHeight: 40,
+            maxHeight: 40,
+            gap: 0.5,
+            borderTop: 1,
+            borderColor: "divider",
+            flexShrink: 0,
+            flexGrow: 0
+          }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>
+            {t("monitor.stats.totalPassings", { count: store.stats.totalPassings })}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>|</Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>
+            {t("monitor.stats.active", { count: store.stats.activePassings })}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>|</Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>
+            {t("monitor.stats.disabled", { count: store.stats.disabledPassings })}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>|</Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>
+            {t("monitor.stats.competitors", { count: store.stats.competitors })}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem"
+            }}>|</Typography>
+          <Typography variant="caption" sx={{ fontSize: "0.75rem", color: troubles > 0 ? "error.main" : "text.secondary" }}>
+            {t("monitor.stats.withTroubles", { count: troubles })}
+          </Typography>
+        </Stack>
+      </Box>
     </MonitorProvider>
   );
 }

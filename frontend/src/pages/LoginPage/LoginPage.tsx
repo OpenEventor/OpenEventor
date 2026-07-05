@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   Box,
@@ -12,6 +13,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext.tsx';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +37,7 @@ export function LoginPage() {
       await login(username, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('login.failed'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export function LoginPage() {
               </Alert>
             )}
             <TextField
-              label="Login"
+              label={t('login.username')}
               fullWidth
               margin="normal"
               value={username}
@@ -72,7 +74,7 @@ export function LoginPage() {
               required
             />
             <TextField
-              label="Password"
+              label={t('login.password')}
               type="password"
               fullWidth
               margin="normal"
@@ -88,7 +90,7 @@ export function LoginPage() {
               disabled={loading}
               sx={{ mt: 2 }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? t('login.signingIn') : t('login.signIn')}
             </Button>
           </Box>
         </CardContent>

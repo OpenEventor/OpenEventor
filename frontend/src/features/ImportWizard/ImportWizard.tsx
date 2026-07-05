@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { api } from '../../api/client';
@@ -30,6 +31,7 @@ export default function ImportWizard({
   parseUrl,
   importUrl,
 }: ImportWizardProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>('source');
   const [rawRows, setRawRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -117,17 +119,19 @@ export default function ImportWizard({
       const res = await api.post<ImportExecuteResponse>(importUrl, body);
       setResult(res);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
+      setError(err instanceof Error ? err.message : t('import.importFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   const stepTitle: Record<Step, string> = {
-    source: 'Import — Select source',
-    paste: 'Import — Paste data',
-    preview: 'Import — Preview & mapping',
-    summary: result ? 'Import — Result' : 'Import — Confirm',
+    source: t('import.dialogTitle', { step: t('import.steps.source') }),
+    paste: t('import.dialogTitle', { step: t('import.steps.paste') }),
+    preview: t('import.dialogTitle', { step: t('import.steps.preview') }),
+    summary: t('import.dialogTitle', {
+      step: result ? t('import.steps.result') : t('import.steps.confirm'),
+    }),
   };
 
   return (

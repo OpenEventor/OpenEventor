@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Autocomplete,
   Box,
@@ -31,13 +32,6 @@ interface PreviewStepProps {
   storageKey: string;
 }
 
-const IMPORT_MODES = [
-  { value: 'append', label: 'Append', description: 'Add all rows as new competitors' },
-  { value: 'replace_by_bib_ignore', label: 'Update by bib (skip unknown)', description: 'Update existing by bib, skip unknown bibs' },
-  { value: 'replace_by_bib_add', label: 'Update by bib (add new)', description: 'Update existing by bib, add unknown as new' },
-  { value: 'clear_and_import', label: 'Clear and import', description: 'Delete ALL competitors, then import' },
-];
-
 export default function PreviewStep({
   rows,
   fields,
@@ -51,12 +45,20 @@ export default function PreviewStep({
   onBack,
   storageKey,
 }: PreviewStepProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
+
+  const IMPORT_MODES = [
+    { value: 'append', label: t('import.modes.append'), description: t('import.modes.appendDesc') },
+    { value: 'replace_by_bib_ignore', label: t('import.modes.updateSkip'), description: t('import.modes.updateSkipDesc') },
+    { value: 'replace_by_bib_add', label: t('import.modes.updateAdd'), description: t('import.modes.updateAddDesc') },
+    { value: 'clear_and_import', label: t('import.modes.clear'), description: t('import.modes.clearDesc') },
+  ];
 
   const colCount = rows.length > 0 ? rows[0].length : 0;
 
   const fieldOptions = useMemo(() => {
-    return [{ field: NOT_USED, label: 'Not used' }, ...fields];
+    return [{ field: NOT_USED, label: 'import.notUsed' }, ...fields];
   }, [fields]);
 
   // Save mapping to localStorage on change.
@@ -135,7 +137,7 @@ export default function PreviewStep({
           <Autocomplete
             size="small"
             options={fieldOptions}
-            getOptionLabel={(o) => o.label}
+            getOptionLabel={(o) => t(o.label)}
             value={fieldOptions.find((o) => o.field === (mapping[String(colIdx)] ?? NOT_USED)) ?? fieldOptions[0]}
             onChange={(_, val) => setColumnField(colIdx, val?.field ?? null)}
             isOptionEqualToValue={(o, v) => o.field === v.field}
@@ -216,11 +218,10 @@ export default function PreviewStep({
           }}
         />
       </Box>
-
       {/* Start from row */}
       <Box sx={{ width: 200 }}>
         <NumberSpinner
-          label="Start from row"
+          label={t('import.startFromRow')}
           size="small"
           value={startFromRow + 1}
           onValueChange={(val) => {
@@ -233,11 +234,15 @@ export default function PreviewStep({
           step={1}
         />
       </Box>
-
       {/* Import mode */}
       <Box>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-          Import mode
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            mb: 0.5
+          }}>
+          {t('import.importMode')}
         </Typography>
         <FormControl>
           <RadioGroup
@@ -252,7 +257,9 @@ export default function PreviewStep({
                 label={
                   <Box>
                     <Typography variant="body2">{m.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{
+                      color: "text.secondary"
+                    }}>
                       {m.description}
                     </Typography>
                   </Box>
@@ -262,15 +269,14 @@ export default function PreviewStep({
           </RadioGroup>
         </FormControl>
       </Box>
-
       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button onClick={onBack}>Back</Button>
+        <Button onClick={onBack}>{t('common.back')}</Button>
         <Button
           variant="contained"
           onClick={onNext}
           disabled={mappedCount === 0}
         >
-          Next
+          {t('common.next')}
         </Button>
       </Box>
     </Box>

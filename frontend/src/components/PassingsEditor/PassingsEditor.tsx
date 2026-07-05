@@ -5,6 +5,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Button,
@@ -341,6 +342,7 @@ export default function PassingsEditor({
   headerContent,
   startTimestamp,
 }: PassingsEditorProps) {
+  const { t } = useTranslation();
   const { date: eventDate, timezone } = useEvent();
   const theme = useTheme();
   const expandedRef = useRef<HTMLDivElement>(null);
@@ -366,7 +368,7 @@ export default function PassingsEditor({
   useEffect(() => {
     if (!open) return;
 
-    let list = buildWorkingList(passings);
+    const list = buildWorkingList(passings);
     let expandIdx = initialIndex;
 
     if (initialMode === "add-before") {
@@ -597,13 +599,15 @@ export default function PassingsEditor({
     // Validate all changes.
     for (const item of changes) {
       if (!item.checkpoint.trim()) {
-        setError(`Checkpoint name is required for all edited passings`);
+        setError(t("passingsEditor.validation.checkpointRequired"));
         setSaving(false);
         return;
       }
       if (item.timestamp <= 0) {
         setError(
-          `Valid time is required for "${item.checkpoint || "new passing"}"`,
+          t("passingsEditor.validation.timeRequired", {
+            name: item.checkpoint || t("passingsEditor.newPassing"),
+          }),
         );
         setSaving(false);
         return;
@@ -628,7 +632,7 @@ export default function PassingsEditor({
       onAfterSave?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : t("passingsEditor.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -644,6 +648,7 @@ export default function PassingsEditor({
     eventId,
     onClose,
     onAfterSave,
+    t,
   ]);
 
   // Colors for expanded row.
@@ -661,7 +666,7 @@ export default function PassingsEditor({
       {
         Component: (
           <DropDownMenuSwitcher
-            text="Edit order"
+            text={t("passingsEditor.editOrder")}
             checked={editOrder}
             onChange={setEditOrder}
           />
@@ -675,8 +680,10 @@ export default function PassingsEditor({
       open={open}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
-        sx: { height: "75vh", display: "flex", flexDirection: "column" },
+      slotProps={{
+        paper: {
+          sx: { height: "75vh", display: "flex", flexDirection: "column" },
+        }
       }}
     >
       <DialogTitle
@@ -687,7 +694,7 @@ export default function PassingsEditor({
           py: 1.5,
         }}
       >
-        Edit mode
+        {t("passingsEditor.title")}
         <IconButton
           size="small"
           onClick={(e) => setSettingsAnchor(e.currentTarget)}
@@ -813,7 +820,7 @@ export default function PassingsEditor({
                       <TextField
                         value={checkpoint}
                         onChange={(e) => setCheckpoint(e.target.value)}
-                        placeholder="Checkpoint"
+                        placeholder={t("passingsEditor.checkpointPlaceholder")}
                         variant="outlined"
                         size="small"
                         disabled={saving}
@@ -945,14 +952,14 @@ export default function PassingsEditor({
                 </Box>
               ) : (
                 /* Compact row */
-                <CompactRow
+                (<CompactRow
                   item={item}
                   delta={deltas[idx]}
                   onClick={() => handleSelect(idx)}
                   onDelete={item.isNew ? () => handleDeleteNew(idx) : undefined}
                   onEmptyClick={handleCollapse}
                   shrinking={idx === shrinkingIdx}
-                />
+                />)
               )}
 
               {/* Insertion divider after each row */}
@@ -968,21 +975,19 @@ export default function PassingsEditor({
           ))}
         </Box>
       </DialogContent>
-
       {error && (
         <Typography color="error" variant="caption" sx={{ px: 3, pb: 1 }}>
           {error}
         </Typography>
       )}
-
       <DialogActions
         sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: "divider" }}
       >
         <Button onClick={onClose} disabled={saving}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button variant="contained" onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save"}
+          {saving ? t("common.saving") : t("common.save")}
         </Button>
       </DialogActions>
     </Dialog>

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Button,
@@ -110,6 +111,7 @@ export function ColumnSettingsPanel({
   onMove,
   onReset,
 }: ColumnSettingsPanelProps) {
+  const { t } = useTranslation();
   const defMap = new Map(definitions.map((d) => [d.field, d]));
 
   const sensors = useSensors(
@@ -158,7 +160,7 @@ export function ColumnSettingsPanel({
       </DndContext>
       <Box sx={{ px: 0.5, py: 0.5, borderTop: 1, borderColor: 'divider', mt: 0.5 }}>
         <Button size="small" onClick={onReset} sx={{ fontSize: '0.8rem' }}>
-          Reset to defaults
+          {t('components.resetColumns')}
         </Button>
       </Box>
     </Box>

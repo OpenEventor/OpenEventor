@@ -51,6 +51,7 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	api.Get("/events", h.ListEvents)
 	api.Post("/events", h.CreateEvent)
 	api.Post("/events/reload", h.ReloadEvents)
+	api.Post("/events/import", h.ImportEvent)
 
 	// Event-scoped routes
 	event := api.Group("/events/:eventId")
@@ -68,6 +69,12 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	// Import
 	event.Post("/import/parse", h.ParseImportFile)
 	event.Post("/import/execute", h.ExecuteImport)
+
+	// Checkpoints (control points)
+	event.Get("/checkpoints", h.ListCheckpoints)
+	event.Post("/checkpoints", h.CreateCheckpoint)
+	event.Put("/checkpoints/:checkpointId", h.UpdateCheckpoint)
+	event.Delete("/checkpoints/:checkpointId", h.DeleteCheckpoint)
 
 	// Courses
 	event.Get("/courses", h.ListCourses)
@@ -96,5 +103,14 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	event.Post("/passings/manual", h.CreatePassing)
 	event.Put("/passings/:passingId", h.UpdatePassing)
 	event.Delete("/passings/:passingId", h.DeletePassing)
+
+	// Problems (computed «Разбор проблем»)
+	event.Get("/problems", h.GetProblems)
+
+	// Protocols (start-list / results, generated on the fly)
+	event.Get("/protocols", h.GetProtocol)
+
+	// Export / backup (streams the self-contained .db)
+	event.Get("/export", h.ExportEvent)
 
 }
