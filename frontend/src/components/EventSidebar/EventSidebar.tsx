@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ComponentType } from "react";
+import { apiUrl } from "../../basePath.ts";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -96,7 +97,7 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
     onClose();
     try {
       const token = getStoredToken();
-      const response = await fetch(`/api/events/${eventId}/export`, {
+      const response = await fetch(apiUrl(`/api/events/${eventId}/export`), {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!response.ok) throw new Error("Failed to export event");

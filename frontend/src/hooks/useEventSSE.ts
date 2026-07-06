@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../basePath.ts';
 import { getStoredToken } from '../api/client';
 
 export type SSEStatus = 'connecting' | 'online' | 'offline';
@@ -79,7 +80,7 @@ export function useEventSSE({ eventId, onMessage, onReconnect, enabled = true }:
         return;
       }
 
-      const url = `/api/events/${eventId}/stream?jwt=${encodeURIComponent(token)}`;
+      const url = apiUrl(`/api/events/${eventId}/stream?jwt=${encodeURIComponent(token)}`);
       es = new EventSource(url);
 
       es.onopen = () => {

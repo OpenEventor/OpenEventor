@@ -260,11 +260,14 @@ func Build(base float64) Fixture {
 		competitors = append(competitors, comp)
 
 		a := anchor(d)
-		for j, p := range d.punches {
+		for _, p := range d.punches {
 			passings = append(passings, models.Passing{
 				ID: uuid.New().String(), Card: d.card, Checkpoint: p.cp,
 				Timestamp: math.Round((a+p.elapsed)*100) / 100,
-				Enabled:   1, Source: "demo", SortOrder: j,
+				// sort_order stays 0: punches sort by time (their natural order).
+				// It's a manual override for exceptional cases only, so the demo
+				// must not pin an artificial order (that's what mis-placed JOPA).
+				Enabled: 1, Source: "demo",
 			})
 		}
 	}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiUrl } from '../../../basePath.ts';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -326,7 +327,7 @@ export function CompetitorsPage() {
     const token = settings?.token;
     if (!eventId || !token) { setStatusLookup(new Map()); return; }
     let cancelled = false;
-    fetch(`/api/events/${eventId}/results?token=${encodeURIComponent(token)}`)
+    fetch(apiUrl(`/api/events/${eventId}/results?token=${encodeURIComponent(token)}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('results'))))
       .then((data: { results?: { competitorId: string; status: string }[] }) => {
         if (cancelled) return;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { apiUrl } from '../../basePath.ts';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -110,7 +111,7 @@ export function EventsListPage() {
   const handleDownload = useCallback(async (id: string) => {
     try {
       const token = getStoredToken();
-      const response = await fetch(`/api/events/${id}/export`, {
+      const response = await fetch(apiUrl(`/api/events/${id}/export`), {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!response.ok) throw new Error(t('events.errors.export'));

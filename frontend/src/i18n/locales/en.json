@@ -93,13 +93,13 @@
       "tools": "Tools"
     },
     "items": {
-      "checkpoints": "Checkpoints",
-      "distances": "Distances",
+      "checkpoints": "Controls",
+      "distances": "Courses",
       "competitors": "Competitors",
-      "groups": "Groups",
+      "groups": "Classes",
       "teams": "Teams",
-      "monitor": "Split monitor",
-      "problems": "Problems",
+      "monitor": "Punches monitor",
+      "problems": "Issues",
       "protocols": "Protocols",
       "export": "Export & backup",
       "settings": "Settings",
@@ -108,17 +108,17 @@
     }
   },
   "checkpoints": {
-    "loadError": "Failed to load checkpoints",
-    "deleteTitle": "Delete checkpoint",
-    "namePlaceholder": "Checkpoint name",
+    "loadError": "Failed to load controls",
+    "deleteTitle": "Delete control",
+    "namePlaceholder": "Control name",
     "columns": {
       "latitude": "Latitude",
       "longitude": "Longitude",
       "order": "Order"
     },
     "dialog": {
-      "editTitle": "Edit checkpoint",
-      "newTitle": "New checkpoint",
+      "editTitle": "Edit control",
+      "newTitle": "New control",
       "sortOrder": "Sort order",
       "coordinates": "Coordinates",
       "pasteCoords": "Paste coordinates",
@@ -151,7 +151,7 @@
       "firstNameInt": "First Name (Int)",
       "card1": "Card 1",
       "card2": "Card 2",
-      "group": "Group",
+      "group": "Class",
       "course": "Course",
       "team": "Team",
       "gender": "Gender",
@@ -184,9 +184,9 @@
       "birthYear": "Birth year",
       "rank": "Rank",
       "rating": "Rating",
-      "group": "Group",
-      "course": "Distance",
-      "courseRedefined": "Distance (redefined)",
+      "group": "Class",
+      "course": "Course",
+      "courseRedefined": "Course (redefined)",
       "team": "Team",
       "card1": "Card 1",
       "card2": "Card 2",
@@ -211,7 +211,7 @@
       "birthYear": "YYYY"
     },
     "sections": {
-      "groupAndDistance": "Group and distance",
+      "groupAndDistance": "Class and course",
       "contacts": "Contacts",
       "registration": "Registration & payment"
     },
@@ -220,12 +220,12 @@
       "adjustTime": "Adjust time:",
       "genderMale": " (male)",
       "genderFemale": " (female)",
-      "scoringDistance": "Scoring distance",
+      "scoringDistance": "Scoring course",
       "start": "Start",
       "startSource": {
         "competitor": "own start",
-        "group": "from group",
-        "course": "from distance",
+        "group": "from class",
+        "course": "from course",
         "punch": "from first punch",
         "none": "start not set"
       },
@@ -244,9 +244,9 @@
       "male": "Male",
       "female": "Female",
       "location": "Location",
-      "brokenOrder": "Checkpoint order is invalid",
+      "brokenOrder": "Control order is invalid",
       "expectedOrder": "Expected order",
-      "problemsTitle": "Problems",
+      "problemsTitle": "Issues",
       "effStatus": {
         "ok": "Finished",
         "dsq": "DSQ",
@@ -259,14 +259,14 @@
         "dnf": "did not finish",
         "dns": "did not start"
       },
-      "placeInGroup": "In group",
-      "placeInCourse": "In distance"
+      "placeInGroup": "In class",
+      "placeInCourse": "In course"
     },
     "status": {
       "outOfRank": "Out of Rank"
     },
     "chips": {
-      "group": "Group: {{value}}",
+      "group": "Class: {{value}}",
       "course": "Course: {{value}}",
       "team": "Team: {{value}}",
       "status": "Status: {{value}}",
@@ -303,7 +303,7 @@
     "deleteTitle": "Delete course",
     "namePlaceholder": "Course name",
     "columns": {
-      "checkpoints": "Checkpoints",
+      "checkpoints": "Controls",
       "validation": "Validation",
       "length": "Length (m)",
       "climb": "Climb (m)",
@@ -314,10 +314,10 @@
       "newTitle": "New course",
       "strict": "Strict",
       "relaxed": "Relaxed",
-      "checkpoints": "Checkpoints",
-      "addCheckpoint": "Add checkpoint",
-      "addCheckpointPlaceholder": "Select a checkpoint",
-      "noCheckpoints": "No checkpoints yet. A name may repeat to form a lap.",
+      "checkpoints": "Controls",
+      "addCheckpoint": "Add control",
+      "addCheckpointPlaceholder": "Select a control",
+      "noCheckpoints": "No controls yet. A name may repeat to form a lap.",
       "geoTrack": "GPS track (GeoJSON)",
       "track": "Track",
       "length": "Length (m)",
@@ -326,7 +326,7 @@
       "settings": "Settings",
       "startTime": "Start time",
       "price": "Price",
-      "noCheckpointsAvailable": "Create checkpoints first — a course is assembled from them."
+      "noCheckpointsAvailable": "Create controls first — a course is assembled from them."
     }
   },
   "events": {
@@ -366,14 +366,14 @@
     "failed": "Login failed"
   },
   "groups": {
-    "addNew": "Add group",
-    "loadError": "Failed to load groups",
+    "addNew": "Add class",
+    "loadError": "Failed to load classes",
     "saveError": "Failed to save",
-    "editTitle": "Edit group",
-    "newTitle": "New group",
-    "deleteTitle": "Delete group",
+    "editTitle": "Edit class",
+    "newTitle": "New class",
+    "deleteTitle": "Delete class",
     "deleteConfirmLabel": "Type \"{{name}}\" to confirm",
-    "namePlaceholder": "Group name",
+    "namePlaceholder": "Class name",
     "nameRequired": "Name is required",
     "gender": "Gender",
     "sortOrder": "Sort order",
@@ -384,21 +384,21 @@
     "links": "Links",
     "course": "Course",
     "courseId": "Course ID",
-    "parentId": "Parent group ID",
+    "parentId": "Parent class ID",
     "settings": "Settings",
     "startTime": "Start time",
     "price": "Price",
     "description": "Description",
-    "parentGroup": "Parent group",
-    "scoringFromParent": "Scoring distance (from parent)",
-    "inheritanceFooter": "A child group inherits its parent's scoring distance.",
+    "parentGroup": "Parent class",
+    "scoringFromParent": "Scoring course (from parent)",
+    "inheritanceFooter": "A child class inherits its parent's scoring course.",
     "filters": {
-      "course": "Distance",
-      "parent": "Parent group",
+      "course": "Course",
+      "parent": "Parent class",
       "clearAll": "Clear all"
     },
     "chips": {
-      "course": "Distance: {{value}}",
+      "course": "Course: {{value}}",
       "parent": "Parent: {{value}}"
     }
   },
@@ -491,7 +491,7 @@
       "entryNumber": "Entry Number",
       "price": "Price",
       "notes": "Notes",
-      "groupId": "Group",
+      "groupId": "Class",
       "courseId": "Course",
       "teamId": "Team"
     }
@@ -501,13 +501,13 @@
     "newTitle": "New passing",
     "editTitle": "Edit passing",
     "card": "Card",
-    "checkpoint": "Checkpoint",
+    "checkpoint": "Control",
     "timestamp": "Timestamp",
     "source": "Source",
     "enabled": "Enabled",
     "sortOrder": "Sort #",
     "cardRequired": "Card is required",
-    "checkpointRequired": "Checkpoint is required",
+    "checkpointRequired": "Control is required",
     "timestampRequired": "Timestamp is required",
     "timestampPositive": "Timestamp must be greater than 0",
     "loadFailed": "Failed to load passings",
@@ -563,19 +563,19 @@
   "passingsEditor": {
     "title": "Edit mode",
     "editOrder": "Edit order",
-    "checkpointPlaceholder": "Checkpoint",
+    "checkpointPlaceholder": "Control",
     "newPassing": "new passing",
     "saveFailed": "Failed to save",
     "validation": {
-      "checkpointRequired": "Checkpoint name is required for all edited passings",
+      "checkpointRequired": "Control name is required for all edited passings",
       "timeRequired": "Valid time is required for \"{{name}}\""
     }
   },
   "problems": {
     "unnamedCompetitor": "Unnamed competitor",
-    "loadError": "Failed to load problems",
-    "noneFound": "No problems found",
-    "noneOfSeverity": "No {{severity}} problems",
+    "loadError": "Failed to load issues",
+    "noneFound": "No issues found",
+    "noneOfSeverity": "No {{severity}} issues",
     "severity": {
       "critical": "Critical",
       "warning": "Warning",
@@ -585,17 +585,17 @@
       "eventNoDate": "Event has no date",
       "eventNoPlace": "Event has no place",
       "eventNoCourses": "Event has no courses",
-      "courseEmpty": "Course «{{courseName}}» has no checkpoints",
+      "courseEmpty": "Course «{{courseName}}» has no controls",
       "courseDupName": "Duplicate course name «{{courseName}}»",
-      "groupDupName": "Duplicate group name «{{groupName}}»",
-      "groupCourseAndParent": "Group «{{groupName}}» has both a course and a parent",
+      "groupDupName": "Duplicate class name «{{groupName}}»",
+      "groupCourseAndParent": "Class «{{groupName}}» has both a course and a parent",
       "cardCollision": "Card {{card}} is assigned to multiple competitors ({{bibs}})",
       "unknownCardPunches": "Card {{card}} has {{count}} punches but no competitor",
-      "competitorNoCourse": "{{competitor}} has no group or course",
+      "competitorNoCourse": "{{competitor}} has no class or course",
       "competitorNoCard": "{{competitor}} has no chip/card",
       "competitorNegativeTime": "{{competitor}} has a negative time",
-      "competitorDupBib": "Bib {{bib}} is used by {{count}} competitors in the same group",
-      "competitorBrokenOrder": "{{competitor}} reached the finish but the checkpoint order is invalid"
+      "competitorDupBib": "Bib {{bib}} is used by {{count}} competitors in the same class",
+      "competitorBrokenOrder": "{{competitor}} reached the finish but the control order is invalid"
     }
   },
   "protocols": {
@@ -606,7 +606,7 @@
     "typeStart": "Start",
     "typeResults": "Results",
     "grouping": "Grouping",
-    "byGroup": "By group",
+    "byGroup": "By class",
     "byCourse": "By course",
     "sections": "Sections",
     "allSections": "All sections",
@@ -636,7 +636,7 @@
       "bib": "Bib",
       "lastName": "Last name",
       "firstName": "First name",
-      "group": "Group",
+      "group": "Class",
       "team": "Team",
       "country": "Country",
       "rank": "Rank",
@@ -677,10 +677,10 @@
     "copied": "Copied",
     "rules": "Renames & corrections",
     "ruleRawId": "Code",
-    "ruleName": "Checkpoint",
+    "ruleName": "Control",
     "ruleAdjust": "Adjust, s",
     "addRule": "Add rule",
-    "noRules": "With no rules, the station code is stored as the checkpoint name.",
+    "noRules": "With no rules, the station code is stored as the control name.",
     "confirmDelete": "Delete timing system “{{name}}”?"
   }
 }

@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { BASE_PATH } from './basePath.ts';
 import { ThemeModeProvider } from './contexts/ThemeContext.tsx';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute.tsx';
@@ -52,7 +53,7 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+], { basename: BASE_PATH || undefined });
 
 function App() {
   return (

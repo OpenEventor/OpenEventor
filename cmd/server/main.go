@@ -8,6 +8,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -35,6 +36,13 @@ import (
 	"github.com/openeventor/openeventor/internal/handlers"
 	"github.com/openeventor/openeventor/internal/sse"
 )
+
+// injectBasePath adds a runtime <base href> and window.__BASE_PATH__ to the SPA
+// shell so it can be served under a reverse-proxy subpath. prefix "" → root.
+func injectBasePath(html []byte, prefix string) []byte {
+	head := `<head><base href="` + prefix + `/"><script>window.__BASE_PATH__="` + prefix + `";</script>`
+	return bytes.Replace(html, []byte("<head>"), []byte(head), 1)
+}
 
 func main() {
 	var (
@@ -101,16 +109,37 @@ func main() {
 		return fiber.NewError(fiber.StatusNotFound, "not found")
 	})
 
-	// Serve the embedded React build; unmatched non-API routes fall back to
-	// index.html so client-side routing works.
+	// Serve the embedded React build. Real files (assets, favicon) are served
+	// as-is; every other GET returns the SPA shell (index.html) with a runtime
+	// <base href> + window.__BASE_PATH__ injected, so the app can be reverse-
+	// proxied under any subpath (X-Forwarded-Prefix header or BASE_PATH env).
+	// Empty prefix (the default) = served at root, unchanged.
 	if distFS, err := fs.Sub(openeventor.FrontendDist, "frontend/dist"); err != nil {
 		log.Printf("warning: embedded frontend unavailable: %v", err)
 	} else {
-		app.Use("/", filesystem.New(filesystem.Config{
-			Root:         http.FS(distFS),
-			Index:        "index.html",
-			NotFoundFile: "index.html",
-		}))
+		indexHTML, _ := fs.ReadFile(distFS, "index.html")
+		fileServer := filesystem.New(filesystem.Config{Root: http.FS(distFS)})
+		basePathEnv := strings.TrimRight(os.Getenv("BASE_PATH"), "/")
+
+		app.Use(func(c *fiber.Ctx) error {
+			if c.Method() != fiber.MethodGet && c.Method() != fiber.MethodHead {
+				return fiber.ErrNotFound
+			}
+			// A real static file? Serve it untouched.
+			if rel := strings.TrimPrefix(c.Path(), "/"); rel != "" {
+				if f, err := distFS.Open(rel); err == nil {
+					_ = f.Close()
+					return fileServer(c)
+				}
+			}
+			// Otherwise the SPA shell, with the runtime base path.
+			prefix := strings.TrimRight(c.Get("X-Forwarded-Prefix"), "/")
+			if prefix == "" {
+				prefix = basePathEnv
+			}
+			c.Type("html")
+			return c.Send(injectBasePath(indexHTML, prefix))
+		})
 	}
 
 	addr := ":" + cfg.Port

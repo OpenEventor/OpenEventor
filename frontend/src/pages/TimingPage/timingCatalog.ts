@@ -1,3 +1,5 @@
+import { BASE_PATH } from '../../basePath.ts';
+
 // Catalog of available timing-system kinds + small helpers. Designed to grow —
 // the "add" dialog renders this list, so new kinds just get an entry here.
 export interface TimingKindDef {
@@ -17,5 +19,5 @@ export function timingKindDef(id: string): TimingKindDef | undefined {
 
 /** The fixed, tokenless receive URL for a kind (e.g. …/api/timing/ostis). */
 export function timingUrl(kind: string): string {
-  return `${window.location.origin}/api/timing/${kind}`;
+  return `${window.location.origin}${BASE_PATH}/api/timing/${kind}`;
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../../../basePath.ts';
 import { useTranslation } from 'react-i18next';
 import {
   Accordion,
@@ -126,7 +127,7 @@ export function SettingsPage() {
       }
       setLogoFileId(first.id);
       const token = getStoredToken();
-      const resp = await fetch(`/api/events/${eventId}/files/${first.id}`, {
+      const resp = await fetch(apiUrl(`/api/events/${eventId}/files/${first.id}`), {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!resp.ok) throw new Error(t('settings.logoError'));

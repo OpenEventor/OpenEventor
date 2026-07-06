@@ -1,6 +1,8 @@
 const TOKEN_KEY = 'openeventor_token';
 const REFRESH_TOKEN_KEY = 'openeventor_refresh_token';
 
+import { apiUrl } from '../basePath.ts';
+
 export class ApiError extends Error {
   status: number;
 
@@ -19,7 +21,7 @@ async function tryRefresh(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const response = await fetch('/api/auth/refresh', {
+    const response = await fetch(apiUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -54,14 +56,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  let response = await fetch(path, { ...options, headers });
+  let response = await fetch(apiUrl(path), { ...options, headers });
 
   // Auto-refresh on 401 (skip auth endpoints to avoid loops).
   if (response.status === 401 && !path.startsWith('/api/auth/')) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`);
-      response = await fetch(path, { ...options, headers });
+      response = await fetch(apiUrl(path), { ...options, headers });
     }
   }
 
