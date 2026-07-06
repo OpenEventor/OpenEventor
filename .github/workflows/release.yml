@@ -64,8 +64,11 @@ jobs:
             goarch: arm
             goarm: '7'
             cc: arm-linux-gnueabihf-gcc
-            apt: gcc-arm-linux-gnueabihf
+            apt: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
             asset: openeventor-linux-armv7
+            # Static link: no glibc dependency, so it runs on old embedded glibc
+            # (STM32MP157 / OpenSTLinux is glibc 2.31) and any newer system.
+            ldflags: '-s -w -linkmode external -extldflags=-static'
           - runner: ubuntu-latest
             goos: windows
             goarch: amd64
@@ -110,7 +113,8 @@ jobs:
           CC: ${{ matrix.cc }}
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w" -o "dist/${{ matrix.asset }}" ./cmd/server
+          go build -trimpath -ldflags "${{ matrix.ldflags || '-s -w' }}" -o "dist/${{ matrix.asset }}" ./cmd/server
+          file "dist/${{ matrix.asset }}" || true
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
