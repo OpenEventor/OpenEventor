@@ -60,6 +60,13 @@ jobs:
             apt: gcc-aarch64-linux-gnu
             asset: openeventor-linux-arm64
           - runner: ubuntu-latest
+            goos: linux
+            goarch: arm
+            goarm: '7'
+            cc: arm-linux-gnueabihf-gcc
+            apt: gcc-arm-linux-gnueabihf
+            asset: openeventor-linux-armv7
+          - runner: ubuntu-latest
             goos: windows
             goarch: amd64
             cc: x86_64-w64-mingw32-gcc
@@ -99,6 +106,7 @@ jobs:
           CGO_ENABLED: '1'
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
           CC: ${{ matrix.cc }}
         run: |
           mkdir -p dist
