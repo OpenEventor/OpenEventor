@@ -648,5 +648,39 @@
       "comment": "Comment",
       "status": "Status"
     }
+  },
+  "timing": {
+    "title": "Timing systems",
+    "add": "Add",
+    "addTitle": "Add a timing system",
+    "back": "Back",
+    "intro": "Timing-system instances that receive punches from hardware. Each kind has a fixed receive URL; only one system per kind can be active at a time.",
+    "empty": "No timing systems yet. Click “Add”.",
+    "loadError": "Failed to load timing systems",
+    "kind": {
+      "universal": "Universal timing system",
+      "ostis": "OSTIS LOOP"
+    },
+    "active": "Active",
+    "inactive": "Inactive",
+    "routesTo": "Punches go to “{{name}}”",
+    "noEventShort": "No event selected",
+    "name": "Name",
+    "activeToggle": "Make active",
+    "onlyOneActive": "Only one system of this kind can be active — enabling it disables the others of the same kind.",
+    "targetEvent": "Receiving event",
+    "noEvent": "Not selected",
+    "warnNoEvent": "No event selected — punches are rejected and the system will retry later.",
+    "receiveUrl": "Receive URL",
+    "receiveHint": "A permanent URL for this kind. Point the timing system at it. Punches are accepted only while this system is active and an event is selected.",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "rules": "Renames & corrections",
+    "ruleRawId": "Code",
+    "ruleName": "Checkpoint",
+    "ruleAdjust": "Adjust, s",
+    "addRule": "Add rule",
+    "noRules": "With no rules, the station code is stored as the checkpoint name.",
+    "confirmDelete": "Delete timing system “{{name}}”?"
   }
 }

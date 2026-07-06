@@ -44,6 +44,15 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	app.Post("/api/events/:eventId/passings", eventTokenMw, h.CreatePassings)
 	app.Get("/api/events/:eventId/results", eventTokenMw, h.GetResults)
 
+	// Timing-system punch receiver — fixed URL per kind (/api/timing/ostis,
+	// /api/timing/universal), no token; punches route to that kind's active
+	// instance + its event. Registered before the JWT group so it isn't caught by
+	// it. The wildcard variant accepts a trailing path (e.g. OSTIS …/addSplit).
+	app.Post("/api/timing/:kind", h.ReceivePunches)
+	app.Get("/api/timing/:kind", h.ReceivePunches)
+	app.Post("/api/timing/:kind/*", h.ReceivePunches)
+	app.Get("/api/timing/:kind/*", h.ReceivePunches)
+
 	// Protected routes
 	api := app.Group("/api", auth.RequireJWT(h.Config.JWTSecret))
 
@@ -52,6 +61,12 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	api.Post("/events", h.CreateEvent)
 	api.Post("/events/reload", h.ReloadEvents)
 	api.Post("/events/import", h.ImportEvent)
+
+	// Timing systems (global config: instances that receive punches into an event)
+	api.Get("/timing-systems", h.ListTimingSystems)
+	api.Post("/timing-systems", h.CreateTimingSystem)
+	api.Put("/timing-systems/:id", h.UpdateTimingSystem)
+	api.Delete("/timing-systems/:id", h.DeleteTimingSystem)
 
 	// Event-scoped routes
 	event := api.Group("/events/:eventId")

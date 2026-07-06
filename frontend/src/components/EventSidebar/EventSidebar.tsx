@@ -32,6 +32,7 @@ import {
   Palette as PaletteIcon,
   Logout as LogoutIcon,
   Tune as TuneIcon,
+  SettingsInputAntenna as TimingIcon,
   Translate as LanguageIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext.tsx";
@@ -153,6 +154,12 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
   const prefsMenu: DropDownMenuConfig = useMemo(
     () => ({
       items: [
+        {
+          icon: <TimingIcon />,
+          text: t("timing.title"),
+          action: () => navigate("/timing"),
+        },
+        { Component: <Divider sx={{ my: 0.5 }} /> },
         {
           icon: <PaletteIcon />,
           text: t("nav.setupTheme"),

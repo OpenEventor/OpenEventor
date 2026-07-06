@@ -28,6 +28,7 @@ import {
   Diversity3 as TeamsIcon,
   MoreHoriz as MoreHorizIcon,
   Settings as SettingsIcon,
+  SettingsInputAntenna as TimingIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   SettingsBrightness as AutoModeIcon,
@@ -204,6 +205,17 @@ export function AppBar({ withSearch = false }: AppBarProps) {
               },
             ]
           : []),
+        {
+          icon: <TimingIcon />,
+          text: t("timing.title"),
+          action: () => {
+            navigate("/timing");
+            handleSettingsClose();
+          },
+        },
+        {
+          Component: <Divider sx={{ my: 0.5 }} />,
+        },
         {
           icon: <PaletteIcon />,
           text: t("nav.setupTheme"),

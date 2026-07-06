@@ -8,6 +8,22 @@ export interface EventItem {
   modifiedAt?: string;
 }
 
+export interface RenameRule {
+  rawId: string;
+  name: string;
+  timeAdjustment: number;
+}
+
+export interface TimingSystem {
+  id: string;
+  kind: 'universal' | 'ostis';
+  name: string;
+  eventId: string;
+  enabled: number; // 0 | 1 (the active instance of its kind)
+  rules: RenameRule[];
+  createdAt: string;
+}
+
 export interface Competitor {
   id: string;
   bib: string;

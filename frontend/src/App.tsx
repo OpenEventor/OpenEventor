@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute.tsx';
 import { EventLayout } from './components/EventLayout/EventLayout.tsx';
 import { LoginPage } from './pages/LoginPage/LoginPage.tsx';
 import { EventsListPage } from './pages/EventsListPage/EventsListPage.tsx';
+import { TimingPage } from './pages/TimingPage/TimingPage.tsx';
 import { CompetitorsPage } from './pages/event/CompetitorsPage/CompetitorsPage.tsx';
 import { MonitorPage } from './pages/event/MonitorPage/MonitorPage.tsx';
 import { ProtocolsPage } from './pages/event/ProtocolsPage/ProtocolsPage.tsx';
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/events" replace /> },
       { path: 'events', element: <EventsListPage /> },
+      { path: 'timing', element: <TimingPage /> },
       {
         path: 'events/:eventId',
         element: <EventLayout />,
