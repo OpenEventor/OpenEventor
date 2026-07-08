@@ -170,7 +170,7 @@ func Compute(
 			}
 		}
 
-		// Passings from both chip slots, merged and time-sorted.
+		// Passings from both chip slots, merged and ordered by [sortOrder, timestamp].
 		var marks []models.Passing
 		if comp.Card1 != "" {
 			marks = append(marks, byCard[comp.Card1]...)
@@ -178,7 +178,15 @@ func Compute(
 		if comp.Card2 != "" {
 			marks = append(marks, byCard[comp.Card2]...)
 		}
-		sort.SliceStable(marks, func(i, j int) bool { return marks[i].Timestamp < marks[j].Timestamp })
+		// sortOrder carries the chip's physical punch sequence (SF-R/SportIdent), so a
+		// desynced station yields a negative split but not a false out-of-order DSQ.
+		// Default sortOrder 0 for every punch → this reduces to pure time order.
+		sort.SliceStable(marks, func(i, j int) bool {
+			if marks[i].SortOrder != marks[j].SortOrder {
+				return marks[i].SortOrder < marks[j].SortOrder
+			}
+			return marks[i].Timestamp < marks[j].Timestamp
+		})
 
 		var firstPunch *float64
 		if len(marks) > 0 {

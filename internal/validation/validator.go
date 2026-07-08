@@ -60,12 +60,19 @@ func splitMs(timestamp, startRef float64) int64 {
 	return int64(math.Round((timestamp - startRef) * 1000))
 }
 
-// sortedByTime returns a time-sorted copy of passings, leaving the caller's
-// slice untouched.
-func sortedByTime(passings []models.Passing) []models.Passing {
+// sortedForResults returns a copy of passings ordered by [sortOrder, timestamp],
+// leaving the caller's slice untouched. sortOrder — the chip's physical punch
+// sequence from SF-R/SportIdent — is primary, so a desynced station doesn't reorder
+// punches into a false out-of-order DSQ; default sortOrder 0 → pure time order.
+func sortedForResults(passings []models.Passing) []models.Passing {
 	marks := make([]models.Passing, len(passings))
 	copy(marks, passings)
-	sort.SliceStable(marks, func(i, j int) bool { return marks[i].Timestamp < marks[j].Timestamp })
+	sort.SliceStable(marks, func(i, j int) bool {
+		if marks[i].SortOrder != marks[j].SortOrder {
+			return marks[i].SortOrder < marks[j].SortOrder
+		}
+		return marks[i].Timestamp < marks[j].Timestamp
+	})
 	return marks
 }
 
@@ -93,7 +100,7 @@ func reachedLastControl(course models.Course, passings []models.Passing) bool {
 func matchCheckpoints(course models.Course, startRef float64, passings []models.Passing) (splits []Split, matchedAll bool) {
 	expected := checkpointList(course)
 	ptr := 0
-	for _, p := range sortedByTime(passings) {
+	for _, p := range sortedForResults(passings) {
 		if ptr >= len(expected) {
 			break
 		}
@@ -110,7 +117,7 @@ func matchCheckpoints(course models.Course, startRef float64, passings []models.
 // time. matchedAll is false when any checkpoint had no punch.
 func matchTolerant(course models.Course, startRef float64, passings []models.Passing) (splits []Split, matchedAll bool) {
 	expected := checkpointList(course)
-	marks := sortedByTime(passings)
+	marks := sortedForResults(passings)
 	from := 0
 	missing := false
 	for _, cp := range expected {

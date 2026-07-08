@@ -123,7 +123,7 @@ func loadGroups(db *sql.DB) ([]models.Group, error) {
 // loadPassings reads all passings (the engine filters to enabled ones itself).
 func loadPassings(db *sql.DB) ([]models.Passing, error) {
 	rows, err := db.Query(
-		`SELECT id, card, checkpoint, timestamp, COALESCE(enabled,1) FROM passings`,
+		`SELECT id, card, checkpoint, timestamp, COALESCE(enabled,1), COALESCE(sort_order,0) FROM passings`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query passings: %w", err)
@@ -133,7 +133,7 @@ func loadPassings(db *sql.DB) ([]models.Passing, error) {
 	passings := make([]models.Passing, 0)
 	for rows.Next() {
 		var p models.Passing
-		if err := rows.Scan(&p.ID, &p.Card, &p.Checkpoint, &p.Timestamp, &p.Enabled); err != nil {
+		if err := rows.Scan(&p.ID, &p.Card, &p.Checkpoint, &p.Timestamp, &p.Enabled, &p.SortOrder); err != nil {
 			return nil, fmt.Errorf("scan passing: %w", err)
 		}
 		passings = append(passings, p)
