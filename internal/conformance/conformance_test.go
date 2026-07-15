@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -20,12 +21,18 @@ func TestCorpusMatchesEngine(t *testing.T) {
 	if dir == "" {
 		t.Skip("OE_CORPUS_DIR not set; point it at the spec conformance/cases dir to run the corpus")
 	}
-	cases, err := Load(dir)
-	if err != nil {
-		t.Fatalf("load corpus from %s: %v", dir, err)
+	// The results engine produces []ResultRow; the "results" and "golden" blocks
+	// share that shape. The "protocols" block has its own shape and runner.
+	var cases []Case
+	for _, blk := range []string{"results", "golden"} {
+		cs, err := Load(filepath.Join(dir, blk))
+		if err != nil {
+			t.Fatalf("load %s block from %s: %v", blk, dir, err)
+		}
+		cases = append(cases, cs...)
 	}
 	if len(cases) == 0 {
-		t.Fatalf("no cases found under %s", dir)
+		t.Fatalf("no results/golden cases found under %s", dir)
 	}
 	for _, c := range cases {
 		t.Run(c.ID, func(t *testing.T) {

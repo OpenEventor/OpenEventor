@@ -27,8 +27,10 @@ type CompetitorIn struct {
 	Card2          string  `json:"card2,omitempty"`
 	GroupID        string  `json:"groupId,omitempty"`
 	CourseID       string  `json:"courseId,omitempty"`
+	TeamID         string  `json:"teamId,omitempty"`
 	LastName       string  `json:"lastName,omitempty"`
 	FirstName      string  `json:"firstName,omitempty"`
+	Rank           string  `json:"rank,omitempty"`
 	StartTime      float64 `json:"startTime,omitempty"`
 	TimeAdjustment int     `json:"timeAdjustment,omitempty"`
 	Rating         float64 `json:"rating,omitempty"`
@@ -91,8 +93,8 @@ func (in Input) toModels() ([]models.Competitor, []models.Course, []models.Group
 	for _, c := range in.Competitors {
 		comps = append(comps, models.Competitor{
 			ID: c.ID, Bib: c.Bib, Card1: c.Card1, Card2: c.Card2,
-			GroupID: c.GroupID, CourseID: c.CourseID,
-			LastName: c.LastName, FirstName: c.FirstName,
+			GroupID: c.GroupID, CourseID: c.CourseID, TeamID: c.TeamID,
+			LastName: c.LastName, FirstName: c.FirstName, Rank: c.Rank,
 			StartTime: c.StartTime, TimeAdjustment: c.TimeAdjustment, Rating: c.Rating,
 			DSQ: c.DSQ, DNF: c.DNF, DNS: c.DNS, OutOfRank: c.OutOfRank,
 		})

@@ -237,6 +237,140 @@ func inputFromFixture(f demo.Fixture) conformance.Input {
 	return in
 }
 
+// ── protocols block ──────────────────────────────────────────────────────────
+
+func pc(id, desc string, in conformance.ProtocolInput) conformance.ProtocolCase {
+	return conformance.ProtocolCase{ID: "protocols/" + id, Block: "protocols", Since: since, Description: desc, Input: in}
+}
+
+func punchesFinish(card string, finish float64) []conformance.PassingIn {
+	return []conformance.PassingIn{
+		{Card: card, Checkpoint: "START", Timestamp: 1010},
+		{Card: card, Checkpoint: "31", Timestamp: 1020},
+		{Card: card, Checkpoint: "32", Timestamp: 1030},
+		{Card: card, Checkpoint: "FINISH", Timestamp: finish},
+	}
+}
+
+func cat(ss ...[]conformance.PassingIn) []conformance.PassingIn {
+	var out []conformance.PassingIn
+	for _, s := range ss {
+		out = append(out, s...)
+	}
+	return out
+}
+
+func groupCourse(start float64) []conformance.CourseIn {
+	c := courseC()
+	c.StartTime = start
+	return []conformance.CourseIn{c}
+}
+
+func protocolCases() []conformance.ProtocolCase {
+	tie := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", LastName: "A"},
+			{ID: "c2", Bib: "2", Card1: "2", GroupID: "g", LastName: "B"},
+			{ID: "c3", Bib: "3", Card1: "3", GroupID: "g", LastName: "C"},
+			{ID: "c4", Bib: "4", Card1: "4", GroupID: "g", LastName: "D"},
+		},
+		Courses:  groupCourse(1000),
+		Groups:   []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C"}},
+		Passings: cat(punchesFinish("1", 1080), punchesFinish("2", 1090), punchesFinish("3", 1090), punchesFinish("4", 1100)),
+		Config:   conformance.ProtocolConfig{Type: "results", Grouping: "group"},
+	}
+	points := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", LastName: "Slow", Rating: 100},
+			{ID: "c2", Bib: "2", Card1: "2", GroupID: "g", LastName: "Fast", Rating: 50},
+		},
+		Courses:  groupCourse(1000),
+		Groups:   []conformance.GroupIn{{ID: "g", Name: "M-Ski", CourseID: "C"}},
+		Passings: cat(punchesFinish("1", 1100), punchesFinish("2", 1090)),
+		Config:   conformance.ProtocolConfig{Type: "results", Grouping: "group", UsePoints: true},
+	}
+	subtree := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "a1", Bib: "1", Card1: "1", GroupID: "A", LastName: "A1"},
+			{ID: "a2", Bib: "2", Card1: "2", GroupID: "A", LastName: "A2"},
+			{ID: "b1", Bib: "3", Card1: "3", GroupID: "B", LastName: "B1"},
+		},
+		Courses: groupCourse(1000),
+		Groups: []conformance.GroupIn{
+			{ID: "P", Name: "Общий", CourseID: "C"},
+			{ID: "A", Name: "M21", ParentID: "P"},
+			{ID: "B", Name: "W21", ParentID: "P"},
+		},
+		Passings: cat(punchesFinish("1", 1080), punchesFinish("2", 1100), punchesFinish("3", 1090)),
+		Config:   conformance.ProtocolConfig{Type: "results", Grouping: "group"},
+	}
+	nonfin := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", LastName: "Ok"},
+			{ID: "c2", Bib: "2", Card1: "2", GroupID: "g", LastName: "Dsq"},
+			{ID: "c3", Bib: "3", Card1: "3", GroupID: "g", LastName: "Dnf", DNF: 1},
+		},
+		Courses: groupCourse(1000),
+		Groups:  []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C"}},
+		Passings: cat(
+			punchesFinish("1", 1090),
+			[]conformance.PassingIn{ // missing 32 but reaches FINISH → computed DSQ
+				{Card: "2", Checkpoint: "START", Timestamp: 1010},
+				{Card: "2", Checkpoint: "31", Timestamp: 1020},
+				{Card: "2", Checkpoint: "FINISH", Timestamp: 1090},
+			},
+			punchesFinish("3", 1095),
+		),
+		Config: conformance.ProtocolConfig{Type: "results", Grouping: "group", PrintDSQ: true},
+	}
+	startlist := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", LastName: "Mid", StartTime: 1005},
+			{ID: "c2", Bib: "2", Card1: "2", GroupID: "g", LastName: "First", StartTime: 1002},
+			{ID: "c3", Bib: "3", Card1: "3", GroupID: "g", LastName: "Last", StartTime: 1008},
+		},
+		Courses: groupCourse(0),
+		Groups:  []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C"}},
+		Config:  conformance.ProtocolConfig{Type: "start", Grouping: "group"},
+	}
+	columns := conformance.ProtocolInput{
+		Competitors: []conformance.CompetitorIn{
+			{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", TeamID: "t1", LastName: "One", Rank: "MS", Rating: 30},
+			{ID: "c2", Bib: "2", Card1: "2", GroupID: "g", TeamID: "t1", LastName: "Two", Rank: "KMS", Rating: 20},
+		},
+		Courses:  groupCourse(1000),
+		Groups:   []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C"}},
+		Teams:    []conformance.TeamIn{{ID: "t1", Name: "Red Fox", Country: "RUS"}},
+		Passings: cat(punchesFinish("1", 1090), punchesFinish("2", 1100)),
+		Config: conformance.ProtocolConfig{
+			Type: "results", Grouping: "course",
+			ShowTeam: true, ShowCountry: true, ShowRank: true, ShowStartTime: true, ShowComment: true,
+			ShowGapToLeader: true, ShowGapToPrevious: true, UsePoints: true,
+		},
+	}
+
+	return []conformance.ProtocolCase{
+		pc("ranking-tie-1-2-2-4", "Ничья по десятым: два равных делят место, следующее пропускается → 1,2,2,4.", tie),
+		pc("points-over-time", "usePoints: сортировка по очкам DESC перебивает время — медленный, но с бо́льшими очками, выше.", points),
+		pc("parent-subtree-combines", "Родительская группа объединяет всё поддерево в одну секцию; дочерние отдельно не эмитятся.", subtree),
+		pc("nonfinisher-print-flags", "Финишёры сверху; DSQ печатается (printDsq=on), DNF скрыт (printDnf=off).", nonfin),
+		pc("start-list-by-start", "Стартовый протокол: порядок по разрешённому старту, без мест и результата.", startlist),
+		pc("columns-full", "Полный набор колонок: место/номер/фамилия/имя/группа/команда/страна/разряд/старт/результат/отставания/очки/комментарий/статус.", columns),
+	}
+}
+
+func protocolInputFromFixture(f demo.Fixture, cfg conformance.ProtocolConfig) conformance.ProtocolInput {
+	in := inputFromFixture(f)
+	pi := conformance.ProtocolInput{
+		Competitors: in.Competitors, Courses: in.Courses, Groups: in.Groups, Passings: in.Passings,
+		Config: cfg,
+	}
+	for _, t := range f.Teams {
+		pi.Teams = append(pi.Teams, conformance.TeamIn{ID: t.ID, Name: t.Name, Country: t.Country, Region: t.Region, City: t.City})
+	}
+	return pi
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("usage: corpus-gen <output-dir>")
@@ -251,11 +385,24 @@ func main() {
 		Description: "Полная демо-фикстура (2 дистанции, 8 групп, 44 участника) → таблица результатов. Golden master.",
 		Input:       inputFromFixture(demo.Build(demoBase)),
 	})
-
 	for _, c := range all {
 		if err := conformance.WriteCase(dir, c); err != nil {
 			log.Fatalf("write %s: %v", c.ID, err)
 		}
 	}
-	fmt.Printf("wrote %d cases to %s\n", len(all), dir)
+
+	prot := protocolCases()
+	prot = append(prot,
+		pc("golden-results", "Полная демо-фикстура → итоговый протокол (по группам, команда+очки). Golden master.",
+			protocolInputFromFixture(demo.Build(demoBase), conformance.ProtocolConfig{Type: "results", Grouping: "group", ShowTeam: true, UsePoints: true})),
+		pc("golden-start", "Полная демо-фикстура → стартовый протокол (по группам).",
+			protocolInputFromFixture(demo.Build(demoBase), conformance.ProtocolConfig{Type: "start", Grouping: "group", ShowTeam: true})),
+	)
+	for _, c := range prot {
+		if err := conformance.WriteProtocolCase(dir, c); err != nil {
+			log.Fatalf("write %s: %v", c.ID, err)
+		}
+	}
+
+	fmt.Printf("wrote %d results + %d protocol cases to %s\n", len(all), len(prot), dir)
 }
