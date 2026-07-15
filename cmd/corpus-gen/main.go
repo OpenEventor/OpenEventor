@@ -202,13 +202,41 @@ func cases() []conformance.Case {
 	}
 }
 
+// remapIDs maps the demo fixture's random UUIDs to stable, order-based slugs so the
+// golden cases are deterministic across regenerations (the fixture's declaration
+// order is fixed; only its uuids are random). Cards/checkpoints are already stable strings.
+func remapIDs(f demo.Fixture) map[string]string {
+	m := map[string]string{}
+	for i, c := range f.Courses {
+		m[c.ID] = fmt.Sprintf("course-%d", i+1)
+	}
+	for i, g := range f.Groups {
+		m[g.ID] = fmt.Sprintf("group-%d", i+1)
+	}
+	for i, t := range f.Teams {
+		m[t.ID] = fmt.Sprintf("team-%d", i+1)
+	}
+	for i, c := range f.Competitors {
+		m[c.ID] = fmt.Sprintf("comp-%03d", i+1)
+	}
+	return m
+}
+
+func mid(m map[string]string, orig string) string {
+	if v, ok := m[orig]; ok {
+		return v
+	}
+	return orig
+}
+
 func inputFromFixture(f demo.Fixture) conformance.Input {
+	m := remapIDs(f)
 	in := conformance.Input{}
 	for _, c := range f.Competitors {
 		in.Competitors = append(in.Competitors, conformance.CompetitorIn{
-			ID: c.ID, Bib: c.Bib, Card1: c.Card1, Card2: c.Card2,
-			GroupID: c.GroupID, CourseID: c.CourseID,
-			LastName: c.LastName, FirstName: c.FirstName,
+			ID: mid(m, c.ID), Bib: c.Bib, Card1: c.Card1, Card2: c.Card2,
+			GroupID: mid(m, c.GroupID), CourseID: mid(m, c.CourseID), TeamID: mid(m, c.TeamID),
+			LastName: c.LastName, FirstName: c.FirstName, Rank: c.Rank,
 			StartTime: c.StartTime, TimeAdjustment: c.TimeAdjustment, Rating: c.Rating,
 			DSQ: c.DSQ, DNF: c.DNF, DNS: c.DNS, OutOfRank: c.OutOfRank,
 		})
@@ -217,13 +245,13 @@ func inputFromFixture(f demo.Fixture) conformance.Input {
 		var cps []string
 		_ = json.Unmarshal([]byte(c.Checkpoints), &cps)
 		in.Courses = append(in.Courses, conformance.CourseIn{
-			ID: c.ID, Name: c.Name, Checkpoints: cps,
+			ID: mid(m, c.ID), Name: c.Name, Checkpoints: cps,
 			ValidationMode: c.ValidationMode, StartTime: c.StartTime,
 		})
 	}
 	for _, g := range f.Groups {
 		in.Groups = append(in.Groups, conformance.GroupIn{
-			ID: g.ID, Name: g.Name, CourseID: g.CourseID, ParentID: g.ParentID, StartTime: g.StartTime,
+			ID: mid(m, g.ID), Name: g.Name, CourseID: mid(m, g.CourseID), ParentID: mid(m, g.ParentID), StartTime: g.StartTime,
 		})
 	}
 	for _, p := range f.Passings {
@@ -360,13 +388,14 @@ func protocolCases() []conformance.ProtocolCase {
 }
 
 func protocolInputFromFixture(f demo.Fixture, cfg conformance.ProtocolConfig) conformance.ProtocolInput {
+	m := remapIDs(f)
 	in := inputFromFixture(f)
 	pi := conformance.ProtocolInput{
 		Competitors: in.Competitors, Courses: in.Courses, Groups: in.Groups, Passings: in.Passings,
 		Config: cfg,
 	}
 	for _, t := range f.Teams {
-		pi.Teams = append(pi.Teams, conformance.TeamIn{ID: t.ID, Name: t.Name, Country: t.Country, Region: t.Region, City: t.City})
+		pi.Teams = append(pi.Teams, conformance.TeamIn{ID: mid(m, t.ID), Name: t.Name, Country: t.Country, Region: t.Region, City: t.City})
 	}
 	return pi
 }
