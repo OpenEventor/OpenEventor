@@ -400,6 +400,124 @@ func protocolInputFromFixture(f demo.Fixture, cfg conformance.ProtocolConfig) co
 	return pi
 }
 
+// ── problems block ───────────────────────────────────────────────────────────
+
+func prob(id, desc string, in conformance.ProblemInput) conformance.ProblemCase {
+	return conformance.ProblemCase{ID: "problems/" + id, Block: "problems", Since: since, Description: desc, Input: in}
+}
+
+func cleanSettings() map[string]string { return map[string]string{"date": "2026-06-14", "place": "Springfield"} }
+
+func groupG() []conformance.GroupIn { return []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C"}} }
+
+func problemCases() []conformance.ProblemCase {
+	oorder := []conformance.PassingIn{
+		{Card: "1", Checkpoint: "START", Timestamp: 1010},
+		{Card: "1", Checkpoint: "32", Timestamp: 1020},
+		{Card: "1", Checkpoint: "31", Timestamp: 1030},
+		{Card: "1", Checkpoint: "FINISH", Timestamp: 1090},
+	}
+	startFinish := []conformance.PassingIn{
+		{Card: "1", Checkpoint: "START", Timestamp: 1010},
+		{Card: "1", Checkpoint: "FINISH", Timestamp: 1090},
+	}
+
+	return []conformance.ProblemCase{
+		prob("clean-none", "Полностью валидное событие → проблем нет (проверка отсутствия ложных срабатываний).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("1"),
+		}),
+		prob("event-no-date", "Не задана дата события → eventNoDate (warning).", conformance.ProblemInput{
+			Settings: map[string]string{"place": "Springfield"}, Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("1"),
+		}),
+		prob("event-no-place", "Не задано место → eventNoPlace (info).", conformance.ProblemInput{
+			Settings: map[string]string{"date": "2026-06-14"}, Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("1"),
+		}),
+		prob("event-no-courses", "Есть участники, но нет ни одной дистанции → eventNoCourses (critical).", conformance.ProblemInput{
+			Settings:    cleanSettings(),
+			Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1", GroupID: "g"}},
+			Groups:      []conformance.GroupIn{{ID: "g", Name: "M21"}},
+		}),
+		prob("course-empty", "Дистанция с пустым списком КП → courseEmpty (critical).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{{ID: "C", Name: "Course C", Checkpoints: []string{}}},
+			Groups:  groupG(), Passings: fullPunches("1"),
+		}),
+		prob("course-dup-name", "Две дистанции с одинаковым именем → courseDupName (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1", GroupID: "g"}},
+			Courses: []conformance.CourseIn{
+				{ID: "C1", Name: "Course C", Checkpoints: []string{"START", "FINISH"}},
+				{ID: "C2", Name: "Course C", Checkpoints: []string{"START", "FINISH"}},
+			},
+			Groups: []conformance.GroupIn{{ID: "g", Name: "M21", CourseID: "C1"}}, Passings: startFinish,
+		}),
+		prob("group-dup-name", "Две группы с одинаковым именем → groupDupName (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1", GroupID: "g1"}},
+			Courses: []conformance.CourseIn{courseC()},
+			Groups:  []conformance.GroupIn{{ID: "g1", Name: "M21", CourseID: "C"}, {ID: "g2", Name: "M21", CourseID: "C"}},
+			Passings: fullPunches("1"),
+		}),
+		prob("group-course-and-parent", "У группы заданы и дистанция, и родитель → groupCourseAndParent (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1", GroupID: "P"}},
+			Courses: []conformance.CourseIn{courseC()},
+			Groups:  []conformance.GroupIn{{ID: "P", Name: "Общий", CourseID: "C"}, {ID: "X", Name: "M21", CourseID: "C", ParentID: "P"}},
+			Passings: fullPunches("1"),
+		}),
+		prob("card-collision", "Один чип у двух участников → cardCollision (critical).", conformance.ProblemInput{
+			Settings: cleanSettings(),
+			Competitors: []conformance.CompetitorIn{
+				{ID: "c1", Bib: "1", Card1: "1", GroupID: "g"},
+				{ID: "c2", Bib: "2", Card1: "1", GroupID: "g"},
+			},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("1"),
+		}),
+		prob("unknown-card-punches", "Отсечки для карты без участника → unknownCardPunches (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(),
+			Passings: cat(fullPunches("1"), []conformance.PassingIn{{Card: "999", Checkpoint: "31", Timestamp: 1050}}),
+		}),
+		prob("competitor-dup-bib", "Дубль номера внутри группы → competitorDupBib (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(),
+			Competitors: []conformance.CompetitorIn{
+				{ID: "c1", Bib: "5", Card1: "1", GroupID: "g"},
+				{ID: "c2", Bib: "5", Card1: "2", GroupID: "g"},
+			},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: cat(fullPunches("1"), fullPunches("2")),
+		}),
+		prob("competitor-no-course", "Участник без группы и без дистанции → competitorNoCourse (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1"}},
+			Courses: []conformance.CourseIn{courseC()},
+		}),
+		prob("competitor-no-card", "Участник без чипа при наличии отсечек → competitorNoCard (warning).", conformance.ProblemInput{
+			Settings: cleanSettings(),
+			Competitors: []conformance.CompetitorIn{
+				{ID: "c1", Bib: "1", GroupID: "g"},
+				{ID: "c2", Bib: "2", Card1: "2", GroupID: "g"},
+			},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("2"),
+		}),
+		prob("competitor-negative-time", "Старт позже финиша → отрицательное время → competitorNegativeTime (critical).", conformance.ProblemInput{
+			Settings:    cleanSettings(),
+			Competitors: []conformance.CompetitorIn{{ID: "c1", Bib: "1", Card1: "1", GroupID: "g", StartTime: 2000}},
+			Courses:     []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: fullPunches("1"),
+		}),
+		prob("competitor-broken-order", "Достиг финиша, но порядок нарушен, без ручного статуса → competitorBrokenOrder (critical).", conformance.ProblemInput{
+			Settings: cleanSettings(), Competitors: []conformance.CompetitorIn{comp1()},
+			Courses: []conformance.CourseIn{courseC()}, Groups: groupG(), Passings: oorder,
+		}),
+	}
+}
+
+func problemInputFromFixture(f demo.Fixture, settings map[string]string) conformance.ProblemInput {
+	in := inputFromFixture(f)
+	return conformance.ProblemInput{
+		Settings:    settings,
+		Competitors: in.Competitors, Courses: in.Courses, Groups: in.Groups, Passings: in.Passings,
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("usage: corpus-gen <output-dir>")
@@ -433,5 +551,14 @@ func main() {
 		}
 	}
 
-	fmt.Printf("wrote %d results + %d protocol cases to %s\n", len(all), len(prot), dir)
+	probs := problemCases()
+	probs = append(probs, prob("golden-demo", "Полная демо-фикстура + корректные settings → список проблем демо. Golden master.",
+		problemInputFromFixture(demo.Build(demoBase), cleanSettings())))
+	for _, c := range probs {
+		if err := conformance.WriteProblemCase(dir, c); err != nil {
+			log.Fatalf("write %s: %v", c.ID, err)
+		}
+	}
+
+	fmt.Printf("wrote %d results + %d protocol + %d problem cases to %s\n", len(all), len(prot), len(probs), dir)
 }
