@@ -7,7 +7,7 @@ Open-source timing and results platform for sports events (orienteering, skiing,
 - **Backend:** Go (Fiber framework)
 - **Frontend:** React + MUI (Material UI)
 - **Database:** SQLite (one DB per event + one system DB)
-- **Auth:** JWT (bcrypt for passwords)
+- **Auth:** none — LAN-local software for race admins; the network boundary is the access boundary
 - **PDF export:** Client-side (browser)
 - **Excel:** excelize library (Go) for xlsx import/export
 
@@ -30,7 +30,7 @@ OpenEventor does NOT include hardware drivers. Timing system integrations are se
 
 ## Database Architecture
 
-- **system.db** — users, events registry, access control
+- **system.db** — events registry, timing-system instances
 - **event_<uuid>.db** — all event data (competitors, passings, courses, etc.)
 
 Each event DB is fully self-contained (including file attachments as BLOBs). Copying one .db file = copying the entire event.
@@ -60,10 +60,9 @@ Results are ALWAYS computed on the fly from passings + courses. Never stored.
 
 ## API Design
 
-- `POST /api/auth/login|refresh|logout`
 - `GET/POST /api/events` — event management (system.db)
 - `/api/events/:id/*` — all operations within an event DB
-- `POST /api/events/:id/passings` — accepts batch writes, uses event-token (not user JWT)
+- `POST /api/events/:id/passings` — accepts batch writes from timing devices
 - `GET /api/events/:id/stream` — SSE for real-time consumers (scoreboards, overlays)
 - `GET /api/events/:id/results` — computed results with filters (by course, group)
 
@@ -97,6 +96,7 @@ The frontend is embedded into the Go binary via `//go:embed` (`static.go` at pro
 - `make build` — build for macOS (frontend + backend)
 - `make build-windows` — cross-compile for Windows (requires `brew install mingw-w64`)
 - `make build-linux-arm64` — cross-compile for Raspberry Pi (requires `brew install messense/macos-cross-toolchains/aarch64-unknown-linux-gnu`)
+- `make build-openwrt` — OpenWRT router `.ipk` packages (arm64/armv7/x86_64); uses the pure-Go SQLite driver (`-tags purego`, modernc.org/sqlite), no cross-toolchain needed. See packaging/openwrt/README.md
 - `make build-all` — all platforms
 - `make clean` — remove `dist/`
 

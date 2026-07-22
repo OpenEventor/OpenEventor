@@ -32,14 +32,12 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   SettingsBrightness as AutoModeIcon,
-  Logout as LogoutIcon,
   Search as SearchIcon,
   Palette as PaletteIcon,
   Apps as AppsIcon,
   ArrowBack as ArrowBackIcon,
   Translate as LanguageIcon,
 } from "@mui/icons-material";
-import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
 import { useEventOptional } from "../../contexts/EventContext.tsx";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
@@ -48,6 +46,7 @@ import DropDownMenuRadioGroup from "../DropDownMenu/DropDownMenuRadioGroup.tsx";
 import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher.tsx";
 import type { DropDownMenuConfig } from "../DropDownMenu/types.ts";
 import logoSvg from "../../assets/logo.svg";
+import { PAGE_MAX_WIDTH } from "../../layout.ts";
 
 export const EVENT_TABS = [
   { path: "competitors", label: "Competitors", icon: PeopleIcon },
@@ -114,25 +113,11 @@ export function HighContrastSwitch() {
   );
 }
 
-export function CompactViewSwitch() {
-  const { t } = useTranslation();
-  const { compactView, setCompactView } = useThemeMode();
-  return (
-    <DropDownMenuSwitcher
-      text={t("nav.compactView")}
-      checked={compactView}
-      onChange={setCompactView}
-    />
-  );
-}
-
 export function AppBar({ withSearch = false }: AppBarProps) {
   const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
-  const { compactView } = useThemeMode();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -150,9 +135,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
     : undefined;
   const isMoreActive = MORE_TABS.some((tab) => tab.path === activeTab);
 
-  const isCompact = compactView;
-  const showTabsInToolbar = eventId && !isMobile && isCompact;
-  const showSecondRow = eventId && !isMobile && !isCompact;
+  const showSecondRow = eventId && !isMobile;
 
   const moreMenu: DropDownMenuConfig = useMemo(
     () => ({
@@ -229,9 +212,6 @@ export function AppBar({ withSearch = false }: AppBarProps) {
               {
                 Component: <HighContrastSwitch />,
               },
-              {
-                Component: <CompactViewSwitch />,
-              },
             ],
           },
         },
@@ -246,13 +226,6 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 Component: <LanguageRadioGroup />,
               },
             ],
-          },
-        },
-        {
-          icon: <LogoutIcon />,
-          text: t("nav.logout"),
-          action: () => {
-            logout();
           },
         },
       ],
@@ -274,7 +247,9 @@ export function AppBar({ withSearch = false }: AppBarProps) {
           borderColor: "divider",
         }}
       >
-        <Toolbar sx={{ gap: 1, minHeight: 50, height: 50 }}>
+        <Toolbar sx={{ minHeight: 50, height: 50 }}>
+          {/* Centered site container so the bar content doesn't stretch on huge monitors */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%", maxWidth: PAGE_MAX_WIDTH, mx: "auto" }}>
           {/* Logo — click to toggle privacy screen */}
           <IconButton
             edge="start"
@@ -317,42 +292,6 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
               OpenEventor
             </Typography>
-          )}
-
-          {/* Event tabs in compact mode (desktop only) */}
-          {showTabsInToolbar && (
-            <Box sx={{ display: "flex", gap: 0.5, ml: 1 }}>
-              {EVENT_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.path;
-                return (
-                  <Tooltip key={tab.path} title={t(`nav.items.${tab.path}`)} arrow>
-                    <IconButton
-                      onClick={() => navigate(`/events/${eventId}/${tab.path}`)}
-                      sx={{
-                        bgcolor: isActive ? "action.selected" : "transparent",
-                        borderRadius: 1,
-                        "&:hover": { bgcolor: "action.hover" },
-                      }}
-                    >
-                      <Icon />
-                    </IconButton>
-                  </Tooltip>
-                );
-              })}
-              <Tooltip title={t("nav.more")} arrow>
-                <IconButton
-                  onClick={(e) => setMoreAnchor(e.currentTarget)}
-                  sx={{
-                    bgcolor: isMoreActive ? "action.selected" : "transparent",
-                    borderRadius: 1,
-                    "&:hover": { bgcolor: "action.hover" },
-                  }}
-                >
-                  <MoreHorizIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
           )}
 
           {/* Spacer */}
@@ -406,19 +345,23 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             transformOrigin={{ vertical: "top", horizontal: "left" }}
             width={180}
           />
+          </Box>
         </Toolbar>
 
         {/* Second row — tabs with text (normal mode, desktop only) */}
         {showSecondRow && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "stretch",
-              height: 40,
-              pl: 2,
-              gap: 0,
-            }}
-          >
+          <Box sx={{ height: 40, px: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "stretch",
+                height: "100%",
+                width: "100%",
+                maxWidth: PAGE_MAX_WIDTH,
+                mx: "auto",
+                gap: 0,
+              }}
+            >
             {EVENT_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.path;
@@ -487,6 +430,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
                 <MoreHorizIcon fontSize="small" />
                 <Typography variant="body2" sx={{ fontWeight: "inherit" }}>{t("nav.more")}</Typography>
               </ButtonBase>
+            </Box>
             </Box>
           </Box>
         )}

@@ -72,7 +72,6 @@
     "event": "Event",
     "export": "Export & backup",
     "preferences": "Preferences",
-    "logout": "Log out",
     "setupTheme": "Theme",
     "language": "Language",
     "privacyScreen": "Privacy screen",
@@ -82,7 +81,6 @@
     "settings": "Settings",
     "more": "More",
     "highContrast": "High contrast",
-    "compactView": "Compact view",
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeAuto": "Auto",
@@ -98,7 +96,7 @@
       "competitors": "Competitors",
       "groups": "Classes",
       "teams": "Teams",
-      "monitor": "Punches monitor",
+      "monitor": "Passings monitor",
       "problems": "Issues",
       "protocols": "Protocols",
       "export": "Export & backup",
@@ -226,7 +224,7 @@
         "competitor": "own start",
         "group": "from class",
         "course": "from course",
-        "punch": "from first punch",
+        "punch": "from first passing",
         "none": "start not set"
       },
       "status": "Status",
@@ -335,7 +333,7 @@
     "creating": "Creating…",
     "importEvent": "Import event",
     "importing": "Importing…",
-    "reloadDatabases": "Reload databases",
+    "reloadDatabases": "Refresh event list",
     "reloading": "Reloading…",
     "empty": "No events",
     "deleteEvent": "Delete event",
@@ -356,14 +354,8 @@
       "nameRequired": "Event name is required",
       "dateRequired": "A valid date is required",
       "timezoneRequired": "Timezone is required"
-    }
-  },
-  "login": {
-    "username": "Username",
-    "password": "Password",
-    "signIn": "Sign in",
-    "signingIn": "Signing in…",
-    "failed": "Login failed"
+    },
+    "create": "Create"
   },
   "groups": {
     "addNew": "Add class",
@@ -590,7 +582,7 @@
       "groupDupName": "Duplicate class name «{{groupName}}»",
       "groupCourseAndParent": "Class «{{groupName}}» has both a course and a parent",
       "cardCollision": "Card {{card}} is assigned to multiple competitors ({{bibs}})",
-      "unknownCardPunches": "Card {{card}} has {{count}} punches but no competitor",
+      "unknownCardPunches": "Card {{card}} has {{count}} passings but no competitor",
       "competitorNoCourse": "{{competitor}} has no class or course",
       "competitorNoCard": "{{competitor}} has no chip/card",
       "competitorNegativeTime": "{{competitor}} has a negative time",
@@ -654,25 +646,26 @@
     "add": "Add",
     "addTitle": "Add a timing system",
     "back": "Back",
-    "intro": "Timing-system instances that receive punches from hardware. Each kind has a fixed receive URL; only one system per kind can be active at a time.",
+    "intro": "Timing-system instances that receive passings from hardware. Push kinds have a fixed receive URL, OpenEventor HUB is polled by the server itself; only one system per kind can be active at a time.",
     "empty": "No timing systems yet. Click “Add”.",
     "loadError": "Failed to load timing systems",
     "kind": {
       "universal": "Universal timing system",
-      "ostis": "OSTIS LOOP"
+      "ostis": "OSTIS LOOP",
+      "hub": "OpenEventor HUB"
     },
     "active": "Active",
     "inactive": "Inactive",
-    "routesTo": "Punches go to “{{name}}”",
+    "routesTo": "Passings go to “{{name}}”",
     "noEventShort": "No event selected",
     "name": "Name",
     "activeToggle": "Make active",
     "onlyOneActive": "Only one system of this kind can be active — enabling it disables the others of the same kind.",
     "targetEvent": "Receiving event",
     "noEvent": "Not selected",
-    "warnNoEvent": "No event selected — punches are rejected and the system will retry later.",
+    "warnNoEvent": "No event selected — passings are rejected and the system will retry later.",
     "receiveUrl": "Receive URL",
-    "receiveHint": "A permanent URL for this kind. Point the timing system at it. Punches are accepted only while this system is active and an event is selected.",
+    "receiveHint": "A permanent URL for this kind. Point the timing system at it. Passings are accepted only while this system is active and an event is selected.",
     "copyLink": "Copy link",
     "copied": "Copied",
     "rules": "Renames & corrections",
@@ -681,6 +674,25 @@
     "ruleAdjust": "Adjust, s",
     "addRule": "Add rule",
     "noRules": "With no rules, the station code is stored as the control name.",
-    "confirmDelete": "Delete timing system “{{name}}”?"
+    "confirmDelete": "Delete timing system “{{name}}”?",
+    "hubUrl": "HUB address (router)",
+    "hubUrlHint": "Address of the router running the OpenEventor Hub utility, e.g. openeventor.local:8080 or 192.168.8.1:8080. The server pulls passings from the hub itself (after saving) — a loss-free stream that resumes after any outage.",
+    "hubStatus": "Connection status",
+    "hubEnterUrl": "Enter the hub address and save — the connection status will appear here.",
+    "hubChecking": "Checking hub connection…",
+    "hubUnreachable": "Hub unreachable. Check that the router is on the network and the utility is running.",
+    "hubConnected": "Hub online (version {{version}})",
+    "hubClockUnset": "Clock not set",
+    "hubHead": "in log: {{head}}",
+    "hubCursor": "received: {{cursor}}",
+    "hubNoSystems": "The router doesn't see any timing systems.",
+    "hubNoUrlShort": "Hub address not set",
+    "hubSysState": {
+      "disabled": "Disabled",
+      "connecting": "Connecting…",
+      "connected": "Connected",
+      "live": "Passings flowing",
+      "error": "Error"
+    }
   }
 }

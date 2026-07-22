@@ -22,13 +22,10 @@ interface ThemeContextValue {
   setMode: (mode: ThemeMode) => void;
   highContrast: boolean;
   setHighContrast: (value: boolean) => void;
-  compactView: boolean;
-  setCompactView: (value: boolean) => void;
 }
 
 const STORAGE_KEY = 'openeventor_theme';
 const HIGH_CONTRAST_KEY = 'openeventor_high_contrast';
-const COMPACT_VIEW_KEY = 'openeventor_compact_view';
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -58,7 +55,6 @@ function getStoredBool(key: string, defaultValue: boolean): boolean {
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(getStoredMode);
   const [highContrast, setHighContrastState] = useState(() => getStoredBool(HIGH_CONTRAST_KEY, false));
-  const [compactView, setCompactViewState] = useState(() => getStoredBool(COMPACT_VIEW_KEY, false));
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
   const setMode = useCallback((newMode: ThemeMode) => {
@@ -69,11 +65,6 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const setHighContrast = useCallback((value: boolean) => {
     localStorage.setItem(HIGH_CONTRAST_KEY, String(value));
     setHighContrastState(value);
-  }, []);
-
-  const setCompactView = useCallback((value: boolean) => {
-    localStorage.setItem(COMPACT_VIEW_KEY, String(value));
-    setCompactViewState(value);
   }, []);
 
   const resolvedMode = mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
@@ -135,7 +126,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
     [resolvedMode, highContrast],
   );
 
-  const value: ThemeContextValue = { mode, setMode, highContrast, setHighContrast, compactView, setCompactView };
+  const value: ThemeContextValue = { mode, setMode, highContrast, setHighContrast };
 
   return (
     <ThemeContext.Provider value={value}>

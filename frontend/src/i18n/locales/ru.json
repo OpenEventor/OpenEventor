@@ -72,7 +72,6 @@
     "event": "Мероприятие",
     "export": "Экспорт и бэкап",
     "preferences": "Настройки",
-    "logout": "Выйти",
     "setupTheme": "Тема",
     "language": "Язык",
     "privacyScreen": "Приватный экран",
@@ -82,7 +81,6 @@
     "settings": "Настройки",
     "more": "Ещё",
     "highContrast": "Высокий контраст",
-    "compactView": "Компактный вид",
     "themeLight": "Светлая",
     "themeDark": "Тёмная",
     "themeAuto": "Авто",
@@ -103,7 +101,7 @@
       "protocols": "Протоколы",
       "export": "Экспорт и бэкап",
       "settings": "Настройки",
-      "passings": "Отметки",
+      "passings": "Отсечки",
       "modules": "Модули"
     }
   },
@@ -132,7 +130,7 @@
     "tableSettings": "Настройки таблицы",
     "tableColumns": "Столбцы таблицы",
     "deleteTitle": "Удалить участника",
-    "addPassing": "Добавить отметку",
+    "addPassing": "Добавить отсечку",
     "confirmDelete": {
       "label": "Введите «{{name}}» для подтверждения",
       "placeholder": "Имя участника"
@@ -216,7 +214,7 @@
       "registration": "Заявка и оплата"
     },
     "view": {
-      "passings": "Отметки ({{count}})",
+      "passings": "Отсечки ({{count}})",
       "adjustTime": "Корр. времени:",
       "genderMale": " (муж.)",
       "genderFemale": " (жен.)",
@@ -335,7 +333,7 @@
     "creating": "Создание…",
     "importEvent": "Импортировать мероприятие",
     "importing": "Импорт…",
-    "reloadDatabases": "Обновить базы данных",
+    "reloadDatabases": "Обновить список мероприятий",
     "reloading": "Обновление…",
     "empty": "Нет мероприятий",
     "deleteEvent": "Удалить мероприятие",
@@ -356,14 +354,8 @@
       "nameRequired": "Укажите название мероприятия",
       "dateRequired": "Укажите корректную дату",
       "timezoneRequired": "Укажите часовой пояс"
-    }
-  },
-  "login": {
-    "username": "Имя пользователя",
-    "password": "Пароль",
-    "signIn": "Войти",
-    "signingIn": "Вход…",
-    "failed": "Не удалось войти"
+    },
+    "create": "Создать"
   },
   "groups": {
     "addNew": "Добавить группу",
@@ -497,9 +489,9 @@
     }
   },
   "passings": {
-    "addPassing": "Добавить отметку",
-    "newTitle": "Новая отметка",
-    "editTitle": "Изменить отметку",
+    "addPassing": "Добавить отсечку",
+    "newTitle": "Новая отсечка",
+    "editTitle": "Изменить отсечку",
     "card": "Чип",
     "checkpoint": "КП",
     "timestamp": "Метка времени",
@@ -510,7 +502,7 @@
     "checkpointRequired": "Укажите КП",
     "timestampRequired": "Укажите метку времени",
     "timestampPositive": "Метка времени должна быть больше 0",
-    "loadFailed": "Не удалось загрузить отметки",
+    "loadFailed": "Не удалось загрузить отсечки",
     "saveFailed": "Не удалось сохранить"
   },
   "settings": {
@@ -564,7 +556,7 @@
     "title": "Режим редактирования",
     "editOrder": "Изменить порядок",
     "checkpointPlaceholder": "КП",
-    "newPassing": "новая отметка",
+    "newPassing": "новая отсечка",
     "saveFailed": "Не удалось сохранить",
     "validation": {
       "checkpointRequired": "Для всех изменённых отметок нужно указать КП",
@@ -590,7 +582,7 @@
       "groupDupName": "Повторяющееся название группы «{{groupName}}»",
       "groupCourseAndParent": "У группы «{{groupName}}» одновременно заданы дистанция и родительская группа",
       "cardCollision": "Чип {{card}} назначен нескольким участникам ({{bibs}})",
-      "unknownCardPunches": "У чипа {{card}} есть отметки ({{count}}), но нет участника",
+      "unknownCardPunches": "У чипа {{card}} есть отсечки ({{count}}), но нет участника",
       "competitorNoCourse": "{{competitor}}: не указана группа или дистанция",
       "competitorNoCard": "{{competitor}}: нет чипа",
       "competitorNegativeTime": "{{competitor}}: отрицательное время",
@@ -654,12 +646,13 @@
     "add": "Добавить",
     "addTitle": "Добавить тайминг-систему",
     "back": "Назад",
-    "intro": "Экземпляры тайминг-систем, принимающие отсечки с оборудования. У каждого типа постоянный адрес приёма; активной может быть только одна система каждого типа.",
+    "intro": "Экземпляры тайминг-систем, принимающие отсечки с оборудования. У push-типов постоянный адрес приёма, OpenEventor HUB сервер опрашивает сам; активной может быть только одна система каждого типа.",
     "empty": "Пока нет тайминг-систем. Нажмите «Добавить».",
     "loadError": "Не удалось загрузить тайминг-системы",
     "kind": {
       "universal": "Универсальная тайминг-система",
-      "ostis": "OSTIS LOOP"
+      "ostis": "OSTIS LOOP",
+      "hub": "OpenEventor HUB"
     },
     "active": "Активна",
     "inactive": "Не активна",
@@ -681,6 +674,25 @@
     "ruleAdjust": "Поправка, с",
     "addRule": "Добавить правило",
     "noRules": "Без правил код станции пишется как имя КП.",
-    "confirmDelete": "Удалить тайминг-систему «{{name}}»?"
+    "confirmDelete": "Удалить тайминг-систему «{{name}}»?",
+    "hubUrl": "Адрес HUB (роутер)",
+    "hubUrlHint": "Адрес роутера с утилитой OpenEventor Hub, например openeventor.local:8080 или 192.168.8.1:8080. Сервер сам забирает отсечки с хаба (после сохранения), поток без потерь — с докачкой после обрыва.",
+    "hubStatus": "Состояние подключения",
+    "hubEnterUrl": "Укажите адрес хаба и сохраните — здесь появится состояние подключения.",
+    "hubChecking": "Проверяем связь с хабом…",
+    "hubUnreachable": "Хаб недоступен. Проверьте, что роутер в сети и утилита запущена.",
+    "hubConnected": "Хаб на связи (версия {{version}})",
+    "hubClockUnset": "Часы не установлены",
+    "hubHead": "в журнале: {{head}}",
+    "hubCursor": "получено: {{cursor}}",
+    "hubNoSystems": "Роутер не видит ни одной тайминг-системы.",
+    "hubNoUrlShort": "Адрес хаба не указан",
+    "hubSysState": {
+      "disabled": "Выключена",
+      "connecting": "Подключение…",
+      "connected": "Подключена",
+      "live": "Отсечки идут",
+      "error": "Ошибка"
+    }
   }
 }

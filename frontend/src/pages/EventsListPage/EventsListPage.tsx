@@ -23,9 +23,10 @@ import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import DropDownMenu from '../../components/DropDownMenu/DropDownMenu.tsx';
 import DropDownMenuPrompt from '../../components/DropDownMenu/DropDownMenuPrompt.tsx';
 import type { DropDownMenuConfig } from '../../components/DropDownMenu/types.ts';
-import { api, getStoredToken } from '../../api/client.ts';
+import { api } from '../../api/client.ts';
 import type { EventItem } from '../../api/types.ts';
 import { CreateEventDialog } from './CreateEventDialog.tsx';
+import { PAGE_MAX_WIDTH } from '../../layout.ts';
 
 export function EventsListPage() {
   const { t } = useTranslation();
@@ -37,6 +38,7 @@ export function EventsListPage() {
 
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuEventId, setMenuEventId] = useState<string | null>(null);
+  const [headerMenuAnchor, setHeaderMenuAnchor] = useState<HTMLElement | null>(null);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -110,10 +112,7 @@ export function EventsListPage() {
 
   const handleDownload = useCallback(async (id: string) => {
     try {
-      const token = getStoredToken();
-      const response = await fetch(apiUrl(`/api/events/${id}/export`), {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const response = await fetch(apiUrl(`/api/events/${id}/export`));
       if (!response.ok) throw new Error(t('events.errors.export'));
 
       // Prefer the server-provided filename, else fall back to event_<id>.db.
@@ -189,6 +188,32 @@ export function EventsListPage() {
     [t],
   );
 
+  // Header "…" menu: secondary actions (refresh the registry, import a .db).
+  const headerMenu: DropDownMenuConfig = useMemo(
+    () => ({
+      items: [
+        {
+          icon: <RefreshIcon />,
+          text: reloading ? t('events.reloading') : t('events.reloadDatabases'),
+          action: () => {
+            setHeaderMenuAnchor(null);
+            handleReload();
+          },
+        },
+        {
+          icon: <UploadIcon />,
+          text: importing ? t('events.importing') : t('events.importEvent'),
+          action: () => {
+            setHeaderMenuAnchor(null);
+            handleImportClick();
+          },
+        },
+      ],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reloading, importing, t],
+  );
+
   const menu: DropDownMenuConfig = useMemo(
     () => ({
       items: [
@@ -233,31 +258,29 @@ export function EventsListPage() {
   );
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    // Narrow centered container — the events table is small and looks lost
+    // full-width on large monitors (same pattern as TimingPage).
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: PAGE_MAX_WIDTH, mx: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h5">{t('events.title')}</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleReload}
-            disabled={reloading}
-          >
-            {reloading ? t('events.reloading') : t('events.reloadDatabases')}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<UploadIcon />}
-            onClick={handleImportClick}
-            disabled={importing}
-          >
-            {importing ? t('events.importing') : t('events.importEvent')}
-          </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            {t('events.createEvent')}
+            {t('events.create')}
           </Button>
+          <IconButton onClick={(e) => setHeaderMenuAnchor(e.currentTarget)} disabled={reloading || importing}>
+            <MoreHorizIcon />
+          </IconButton>
         </Box>
       </Box>
+      <DropDownMenu
+        open={Boolean(headerMenuAnchor)}
+        onClose={() => setHeaderMenuAnchor(null)}
+        menu={headerMenu}
+        anchorEl={headerMenuAnchor}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        width={300}
+      />
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={fetchEvents}>{t('common.retry')}</Button>}>
           {error}
