@@ -73,7 +73,13 @@ EOF
   echo "/etc/config/openeventor-web" > "$control/conffiles"
   chmod 0755 "$control/postinst" "$control/prerm"
 
-  local T=(--uid 0 --gid 0 --uname root --gname root --no-mac-metadata --format ustar)
+  # Root-owned ustar entries, portable across bsdtar (macOS) and GNU tar (CI).
+  local T
+  if tar --version 2>/dev/null | grep -q "GNU tar"; then
+    T=(--owner=root:0 --group=root:0 --format=ustar)
+  else
+    T=(--uid 0 --gid 0 --uname root --gname root --no-mac-metadata --format ustar)
+  fi
   COPYFILE_DISABLE=1 tar "${T[@]}" -czf "$work/control.tar.gz" -C "$control" .
   COPYFILE_DISABLE=1 tar "${T[@]}" -czf "$work/data.tar.gz"    -C "$data" .
   printf '2.0\n' > "$work/debian-binary"
