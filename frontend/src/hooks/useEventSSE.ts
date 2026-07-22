@@ -15,14 +15,16 @@ interface UseEventSSEOptions {
   enabled?: boolean;
 }
 
-/** Server sends heartbeat every 5s; if nothing arrives in 10s, connection is dead. */
+/** Server sends a named 'ping' event every 5s; if nothing arrives in 10s, connection is dead. */
 const HEARTBEAT_TIMEOUT_MS = 10_000;
 
 /**
  * Hook that maintains an SSE connection to the event stream.
  * The stream is open — no auth (LAN-local software).
  * Auto-reconnects with exponential backoff on disconnect.
- * Uses heartbeat timeout to detect dead connections (server pings every 15s).
+ * Dead connections are detected via the server's 5s 'ping' events — a NAMED
+ * event on purpose: SSE comments don't fire any EventSource listener, so a
+ * comment-based ping cannot reset the heartbeat timer.
  */
 export function useEventSSE({ eventId, onMessage, onReconnect, enabled = true }: UseEventSSEOptions) {
   const onMessageRef = useRef(onMessage);
@@ -86,6 +88,9 @@ export function useEventSSE({ eventId, onMessage, onReconnect, enabled = true }:
           onReconnectRef.current?.();
         }
       };
+
+      // Heartbeat: only resets the dead-man timer, never reaches onMessage.
+      es.addEventListener('ping', () => resetHeartbeat());
 
       // Listen for named events: "passing", "competitor".
       for (const eventType of ['passing', 'competitor']) {

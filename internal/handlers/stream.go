@@ -35,8 +35,9 @@ func (h *Handler) Stream(c *fiber.Ctx) error {
 			return
 		}
 
-		// Heartbeat ticker — sends SSE comment every 15s so the client
-		// can detect a dead connection quickly (instead of waiting for TCP timeout).
+		// Heartbeat ticker — every 5s, well inside the client's 10s dead-man
+		// timeout, so it can detect a dead connection quickly (instead of
+		// waiting for TCP timeout).
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
@@ -55,9 +56,11 @@ func (h *Handler) Stream(c *fiber.Ctx) error {
 					return
 				}
 			case <-ticker.C:
-				// SSE comment line — ignored by EventSource parser but
-				// keeps the TCP connection alive and detects broken pipes.
-				if _, err := fmt.Fprintf(w, ": ping\n\n"); err != nil {
+				// NAMED event, not an SSE comment: comments are invisible to
+				// EventSource (no listener fires), so the client's heartbeat
+				// timer would never reset on an idle event and it would drop
+				// the connection every 10s. The 'ping' listener resets it.
+				if _, err := fmt.Fprintf(w, "event: ping\ndata: {}\n\n"); err != nil {
 					return
 				}
 				if err := w.Flush(); err != nil {
