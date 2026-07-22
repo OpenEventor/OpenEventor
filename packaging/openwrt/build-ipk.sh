@@ -15,7 +15,7 @@ VERSION="${VERSION:-0.1.0}"
 PKG="openeventor-web"
 OUT="$(pwd)/dist/openwrt"         # absolute: build_ipk assembles inside a temp dir
 FILES="$(pwd)/packaging/openwrt/files"
-LDFLAGS="-s -w"
+LDFLAGS="-s -w -X main.version=v${VERSION}"
 
 if [ ! -f frontend/dist/index.html ]; then
   echo "▸ building frontend (embedded into the binary)"

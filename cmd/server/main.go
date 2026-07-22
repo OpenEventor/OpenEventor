@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -44,14 +45,25 @@ func injectBasePath(html []byte, prefix string) []byte {
 	return bytes.Replace(html, []byte("<head>"), []byte(head), 1)
 }
 
+// version is stamped at build time via -ldflags "-X main.version=…" (releases
+// use the git tag); "dev" for plain `go build`/`go run`.
+var version = "dev"
+
 func main() {
 	var (
-		noBrowser bool
-		portFlag  string
+		noBrowser   bool
+		portFlag    string
+		showVersion bool
 	)
 	flag.BoolVar(&noBrowser, "no-browser", false, "do not open a browser window on startup")
 	flag.StringVar(&portFlag, "port", "", "override the HTTP port (defaults to $PORT or 5050)")
+	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("openeventor %s\n", version)
+		return
+	}
 
 	cfg := config.Load()
 	if portFlag != "" {
@@ -94,9 +106,10 @@ func main() {
 	}))
 
 	h := &handlers.Handler{
-		DB:     db,
-		Config: cfg,
-		SSE:    broker,
+		DB:      db,
+		Config:  cfg,
+		SSE:     broker,
+		Version: version,
 	}
 	h.HubPuller = handlers.NewHubPuller(h)
 	handlers.SetupRoutes(app, h)

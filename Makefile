@@ -3,9 +3,12 @@
 frontend:
 	cd frontend && NODE_ENV=development npm install && npm run build
 
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+GO_LDFLAGS = -X main.version=$(VERSION)
+
 build: frontend
 	mkdir -p dist
-	CGO_ENABLED=1 go build -o dist/openeventor ./cmd/server
+	CGO_ENABLED=1 go build -ldflags "$(GO_LDFLAGS)" -o dist/openeventor ./cmd/server
 
 build-windows: frontend
 	mkdir -p dist

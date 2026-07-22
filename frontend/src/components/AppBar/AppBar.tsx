@@ -37,10 +37,12 @@ import {
   Apps as AppsIcon,
   ArrowBack as ArrowBackIcon,
   Translate as LanguageIcon,
+  InfoOutlined as InfoIcon,
 } from "@mui/icons-material";
 import { useThemeMode } from "../../contexts/ThemeContext.tsx";
 import { useEventOptional } from "../../contexts/EventContext.tsx";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
+import { AboutDialog } from "../AboutDialog/AboutDialog.tsx";
 import DropDownMenu from "../DropDownMenu/DropDownMenu.tsx";
 import DropDownMenuRadioGroup from "../DropDownMenu/DropDownMenuRadioGroup.tsx";
 import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher.tsx";
@@ -125,6 +127,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
   const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const handleSettingsClose = () => setSettingsAnchor(null);
   const handleMoreClose = () => setMoreAnchor(null);
@@ -228,6 +231,14 @@ export function AppBar({ withSearch = false }: AppBarProps) {
             ],
           },
         },
+        {
+          icon: <InfoIcon />,
+          text: t("about.title"),
+          action: () => {
+            setAboutOpen(true);
+            handleSettingsClose();
+          },
+        },
       ],
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,6 +248,7 @@ export function AppBar({ withSearch = false }: AppBarProps) {
   return (
     <>
       <PrivacyScreen open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <MuiAppBar
         position="sticky"
         elevation={0}

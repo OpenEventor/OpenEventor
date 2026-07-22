@@ -34,9 +34,11 @@ import {
   Tune as TuneIcon,
   SettingsInputAntenna as TimingIcon,
   Translate as LanguageIcon,
+  InfoOutlined as InfoIcon,
 } from "@mui/icons-material";
 import { useEvent } from "../../contexts/EventContext.tsx";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
+import { AboutDialog } from "../AboutDialog/AboutDialog.tsx";
 import DropDownMenu from "../DropDownMenu/DropDownMenu.tsx";
 import type { DropDownMenuConfig } from "../DropDownMenu/types.ts";
 import {
@@ -72,6 +74,7 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
   const { eventId, displayName, date } = useEvent();
 
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [prefsAnchor, setPrefsAnchor] = useState<null | HTMLElement>(null);
 
   // Active page = the last path segment (child routes are single-segment).
@@ -173,6 +176,11 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
             title: t("nav.language"),
             items: [{ Component: <LanguageRadioGroup /> }],
           },
+        },
+        {
+          icon: <InfoIcon />,
+          text: t("about.title"),
+          action: () => setAboutOpen(true),
         },
       ],
     }),
@@ -338,6 +346,7 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
         width={220}
       />
       <PrivacyScreen open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </Box>
   );
 

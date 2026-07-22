@@ -694,5 +694,13 @@
       "live": "Passings flowing",
       "error": "Error"
     }
+  },
+  "about": {
+    "title": "About",
+    "description": "Open-source timing and results platform for sports events: orienteering, skiing, running, multisport.",
+    "serverVersion": "Server",
+    "uiVersion": "Interface",
+    "unreachable": "unreachable",
+    "versionMismatch": "The interface version does not match the server version — your browser is showing a cached page. Hard-refresh (Ctrl+Shift+R / Cmd+Shift+R)."
   }
 }

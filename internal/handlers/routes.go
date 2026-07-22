@@ -13,12 +13,22 @@ type Handler struct {
 	Config    *config.Config
 	SSE       *sse.Broker
 	HubPuller *HubPuller // background puller for the hub timing kind (may be nil in tests)
+	Version   string     // build version (git tag), "dev" for local builds
 }
 
 // SetupRoutes registers all API routes on the Fiber app.
 func SetupRoutes(app *fiber.App, h *Handler) {
 	app.Get("/api/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
+	})
+	// Server build version — the About dialog compares it with the frontend's
+	// baked-in version to catch a stale browser-cached UI.
+	app.Get("/api/version", func(c *fiber.Ctx) error {
+		v := h.Version
+		if v == "" {
+			v = "dev"
+		}
+		return c.JSON(fiber.Map{"version": v})
 	})
 
 	// No authentication anywhere: OpenEventor is LAN-local timing software for
