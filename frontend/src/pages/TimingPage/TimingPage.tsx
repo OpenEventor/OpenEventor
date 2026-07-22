@@ -15,6 +15,7 @@ import type { EventItem, TimingSystem } from '../../api/types.ts';
 import { TimingSystemCard } from './TimingSystemCard.tsx';
 import { TimingSystemDialog } from './TimingSystemDialog.tsx';
 import { AddTimingDialog } from './AddTimingDialog.tsx';
+import { PAGE_MAX_WIDTH } from '../../layout.ts';
 
 export function TimingPage() {
   const { t } = useTranslation();
@@ -53,7 +54,7 @@ export function TimingPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+      <Box sx={{ width: '100%', maxWidth: PAGE_MAX_WIDTH, mx: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>

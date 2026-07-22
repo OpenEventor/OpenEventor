@@ -28,6 +28,7 @@ import Field from '../../components/Field/Field.tsx';
 import { api } from '../../api/client.ts';
 import type { EventItem, RenameRule, TimingSystem } from '../../api/types.ts';
 import { TimingLogo } from './TimingLogo.tsx';
+import { HubStatusPanel } from './HubStatusPanel.tsx';
 import { timingUrl } from './timingCatalog.ts';
 
 interface Props {
@@ -44,6 +45,7 @@ export function TimingSystemDialog({ system, events, open, onClose, onChanged }:
   const [eventId, setEventId] = useState(system.eventId);
   const [enabled, setEnabled] = useState(system.enabled === 1);
   const [rules, setRules] = useState<RenameRule[]>(system.rules);
+  const [hubUrl, setHubUrl] = useState(system.hubUrl ?? '');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -53,9 +55,11 @@ export function TimingSystemDialog({ system, events, open, onClose, onChanged }:
       setEventId(system.eventId);
       setEnabled(system.enabled === 1);
       setRules(system.rules);
+      setHubUrl(system.hubUrl ?? '');
     }
   }, [open, system]);
 
+  const isHub = system.kind === 'hub';
   const url = timingUrl(system.kind);
 
   const copy = () => {
@@ -74,6 +78,7 @@ export function TimingSystemDialog({ system, events, open, onClose, onChanged }:
         eventId,
         enabled: enabled ? 1 : 0,
         rules,
+        hubUrl: hubUrl.trim(),
       });
       onChanged();
       onClose();
@@ -156,28 +161,49 @@ export function TimingSystemDialog({ system, events, open, onClose, onChanged }:
             </Typography>
           )}
 
-          <Field label={t('timing.receiveUrl')} helperText={t('timing.receiveHint')}>
-            <TextField
-              value={url}
-              size="small"
-              fullWidth
-              slotProps={{
-                input: {
-                  readOnly: true,
-                  sx: { fontFamily: 'monospace', fontSize: '0.8rem' },
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title={copied ? t('timing.copied') : t('timing.copyLink')} arrow>
-                        <IconButton size="small" onClick={copy} edge="end">
-                          {copied ? <CheckIcon fontSize="small" color="success" /> : <CopyIcon fontSize="small" />}
-                        </IconButton>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-          </Field>
+          {isHub ? (
+            <>
+              <Field label={t('timing.hubUrl')} helperText={t('timing.hubUrlHint')}>
+                <TextField
+                  value={hubUrl}
+                  onChange={(e) => setHubUrl(e.target.value)}
+                  size="small"
+                  fullWidth
+                  placeholder="openeventor.local:8080"
+                  disabled={saving}
+                  slotProps={{
+                    input: { sx: { fontFamily: 'monospace', fontSize: '0.8rem' } },
+                  }}
+                />
+              </Field>
+              <Field label={t('timing.hubStatus')}>
+                <HubStatusPanel systemId={system.id} hubUrl={system.hubUrl ?? ''} />
+              </Field>
+            </>
+          ) : (
+            <Field label={t('timing.receiveUrl')} helperText={t('timing.receiveHint')}>
+              <TextField
+                value={url}
+                size="small"
+                fullWidth
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                    sx: { fontFamily: 'monospace', fontSize: '0.8rem' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={copied ? t('timing.copied') : t('timing.copyLink')} arrow>
+                          <IconButton size="small" onClick={copy} edge="end">
+                            {copied ? <CheckIcon fontSize="small" color="success" /> : <CopyIcon fontSize="small" />}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            </Field>
+          )}
 
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>

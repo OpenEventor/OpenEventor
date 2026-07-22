@@ -3,7 +3,7 @@ import { BASE_PATH } from '../../basePath.ts';
 // Catalog of available timing-system kinds + small helpers. Designed to grow —
 // the "add" dialog renders this list, so new kinds just get an entry here.
 export interface TimingKindDef {
-  id: 'universal' | 'ostis';
+  id: 'universal' | 'ostis' | 'hub';
   nameKey: string; // i18n key
   tint: string;
 }
@@ -11,6 +11,7 @@ export interface TimingKindDef {
 export const TIMING_CATALOG: TimingKindDef[] = [
   { id: 'universal', nameKey: 'timing.kind.universal', tint: '#2E7D32' },
   { id: 'ostis', nameKey: 'timing.kind.ostis', tint: '#EF7F1A' },
+  { id: 'hub', nameKey: 'timing.kind.hub', tint: '#D87000' }, // brand orange, router icon
 ];
 
 export function timingKindDef(id: string): TimingKindDef | undefined {

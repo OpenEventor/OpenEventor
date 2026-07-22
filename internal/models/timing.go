@@ -9,16 +9,21 @@ type RenameRule struct {
 	TimeAdjustment int    `json:"timeAdjustment"` // ± seconds applied to punches at this code
 }
 
-// TimingSystem is one configured instance of a timing system (universal or
-// OSTIS). Several instances of the same kind may exist, but the receive URL is
-// fixed per kind (/api/timing/<kind>), so at most one per kind is active
-// (Enabled) at a time. Stored globally in system.db.
+// TimingSystem is one configured instance of a timing system. Push kinds
+// (universal, ostis) receive punches on a fixed URL (/api/timing/<kind>); the
+// hub kind instead PULLS punches from an OpenEventor Hub (HubURL) with a
+// persisted resume cursor (HubSession/HubCursor). Several instances of the same
+// kind may exist, but at most one per kind is active (Enabled) at a time.
+// Stored globally in system.db.
 type TimingSystem struct {
-	ID        string       `json:"id"`
-	Kind      string       `json:"kind"` // "universal" | "ostis"
-	Name      string       `json:"name"`
-	EventID   string       `json:"eventId"` // target event, "" = not routed
-	Enabled   int          `json:"enabled"` // 0 | 1 (the active instance of its kind)
-	Rules     []RenameRule `json:"rules"`
-	CreatedAt string       `json:"createdAt"`
+	ID         string       `json:"id"`
+	Kind       string       `json:"kind"` // "universal" | "ostis" | "hub"
+	Name       string       `json:"name"`
+	EventID    string       `json:"eventId"` // target event, "" = not routed
+	Enabled    int          `json:"enabled"` // 0 | 1 (the active instance of its kind)
+	Rules      []RenameRule `json:"rules"`
+	HubURL     string       `json:"hubUrl"`     // hub kind only: base address of the hub (host[:port] or URL)
+	HubSession string       `json:"hubSession"` // hub kind only: session id of the hub log being consumed
+	HubCursor  int64        `json:"hubCursor"`  // hub kind only: highest seq already ingested
+	CreatedAt  string       `json:"createdAt"`
 }

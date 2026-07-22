@@ -1,4 +1,4 @@
-.PHONY: build build-windows build-linux-arm64 build-linux-amd64 build-linux-armv7 build-all clean frontend
+.PHONY: build build-windows build-linux-arm64 build-linux-amd64 build-linux-armv7 build-openwrt build-all clean frontend
 
 frontend:
 	cd frontend && NODE_ENV=development npm install && npm run build
@@ -23,7 +23,11 @@ build-linux-armv7: frontend
 	mkdir -p dist
 	GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=1 CC=armv7-linux-gnueabihf-gcc go build -o dist/openeventor-linux-armv7 ./cmd/server
 
-build-all: frontend build build-windows build-linux-arm64 build-linux-amd64 build-linux-armv7
+# OpenWRT router packages (.ipk) — pure-Go SQLite (-tags purego), no cross-toolchain needed.
+build-openwrt: frontend
+	./packaging/openwrt/build-ipk.sh
+
+build-all: frontend build build-windows build-linux-arm64 build-linux-amd64 build-linux-armv7 build-openwrt
 
 clean:
 	rm -rf dist

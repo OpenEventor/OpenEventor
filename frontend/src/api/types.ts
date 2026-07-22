@@ -3,7 +3,6 @@ export interface EventItem {
   displayName: string;
   date: string;
   status: string;
-  token?: string;
   createdAt: string;
   modifiedAt?: string;
 }
@@ -16,12 +15,50 @@ export interface RenameRule {
 
 export interface TimingSystem {
   id: string;
-  kind: 'universal' | 'ostis';
+  kind: 'universal' | 'ostis' | 'hub';
   name: string;
   eventId: string;
   enabled: number; // 0 | 1 (the active instance of its kind)
   rules: RenameRule[];
+  hubUrl: string; // hub kind only: base address of the OpenEventor Hub
+  hubSession: string; // hub kind only: hub log session being consumed
+  hubCursor: number; // hub kind only: highest seq already ingested
   createdAt: string;
+}
+
+/** One timing system as reported by the hub's /v1/hello. */
+export interface HubSystem {
+  id: string;
+  kind: string;
+  name: string;
+  state: 'disabled' | 'connecting' | 'connected' | 'live' | 'error';
+  detail?: string;
+  last_read_at?: string | null;
+  reads?: number;
+  error?: string | null;
+}
+
+/** GET /api/timing-systems/:id/hub-status */
+export interface HubStatus {
+  reachable: boolean;
+  error?: string;
+  hello?: {
+    product?: string;
+    version?: string;
+    protocol?: string;
+    session?: string;
+    head?: number;
+    clock?: { utc?: string; synced?: boolean; source?: string };
+    systems?: HubSystem[];
+  };
+  puller?: {
+    streaming: boolean;
+    systemId: string;
+    session: string;
+    cursor: number;
+    lastError: string;
+    lastIngestAt: string;
+  };
 }
 
 export interface Competitor {

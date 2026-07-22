@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // Manager handles SQLite connections for system.db and event databases.
@@ -141,7 +139,8 @@ func (m *Manager) Close() error {
 }
 
 func openDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON")
+	// Driver name + DSN come from driver_cgo.go / driver_purego.go (build tag).
+	db, err := sql.Open(sqliteDriver, path+sqliteDSN)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,7 @@ import (
 
 // ─── Timing systems: CRUD (user JWT) ────────────────────────────────────────
 
-const timingSelect = `SELECT id, kind, name, COALESCE(event_id, ''), enabled, rules, created_at FROM timing_systems`
+const timingSelect = `SELECT id, kind, name, COALESCE(event_id, ''), enabled, rules, hub_url, hub_session, hub_cursor, created_at FROM timing_systems`
 
 // scanner is satisfied by both *sql.Row and *sql.Rows.
 type scanner interface{ Scan(dest ...interface{}) error }
@@ -25,7 +25,7 @@ type scanner interface{ Scan(dest ...interface{}) error }
 func scanTimingSystem(row scanner) (models.TimingSystem, error) {
 	var s models.TimingSystem
 	var rulesJSON string
-	if err := row.Scan(&s.ID, &s.Kind, &s.Name, &s.EventID, &s.Enabled, &rulesJSON, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.Kind, &s.Name, &s.EventID, &s.Enabled, &rulesJSON, &s.HubURL, &s.HubSession, &s.HubCursor, &s.CreatedAt); err != nil {
 		return s, err
 	}
 	if strings.TrimSpace(rulesJSON) == "" {
@@ -39,6 +39,12 @@ func scanTimingSystem(row scanner) (models.TimingSystem, error) {
 }
 
 func validTimingKind(kind string) bool {
+	return kind == "universal" || kind == "ostis" || kind == "hub"
+}
+
+// pushTimingKind reports whether hardware pushes punches to us on the fixed
+// /api/timing/<kind> URL. The hub kind is pull-based (see hub_puller.go).
+func pushTimingKind(kind string) bool {
 	return kind == "universal" || kind == "ostis"
 }
 
@@ -84,13 +90,16 @@ func (h *Handler) CreateTimingSystem(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 	if !validTimingKind(req.Kind) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "kind must be 'universal' or 'ostis'"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "kind must be 'universal', 'ostis' or 'hub'"})
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		if req.Kind == "ostis" {
+		switch req.Kind {
+		case "ostis":
 			name = "OSTIS LOOP"
-		} else {
+		case "hub":
+			name = "OpenEventor HUB"
+		default:
 			name = "Timing system"
 		}
 	}
@@ -116,6 +125,7 @@ type updateTimingReq struct {
 	EventID string              `json:"eventId"`
 	Enabled int                 `json:"enabled"`
 	Rules   []models.RenameRule `json:"rules"`
+	HubURL  string              `json:"hubUrl"`
 }
 
 // UpdateTimingSystem edits name / target event / enabled / rename rules. Enabling
@@ -140,10 +150,11 @@ func (h *Handler) UpdateTimingSystem(c *fiber.Ctx) error {
 		enabled = 1
 	}
 
-	var kind string
-	if err := h.DB.SystemDB().QueryRow("SELECT kind FROM timing_systems WHERE id = ?", id).Scan(&kind); err != nil {
+	var kind, prevHubURL string
+	if err := h.DB.SystemDB().QueryRow("SELECT kind, hub_url FROM timing_systems WHERE id = ?", id).Scan(&kind, &prevHubURL); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "timing system not found"})
 	}
+	hubURL := strings.TrimSpace(req.HubURL)
 
 	tx, err := h.DB.SystemDB().Begin()
 	if err != nil {
@@ -158,10 +169,17 @@ func (h *Handler) UpdateTimingSystem(c *fiber.Ctx) error {
 		}
 	}
 	if _, err := tx.Exec(
-		`UPDATE timing_systems SET name = ?, event_id = ?, enabled = ?, rules = ? WHERE id = ?`,
-		name, req.EventID, enabled, string(rulesJSON), id,
+		`UPDATE timing_systems SET name = ?, event_id = ?, enabled = ?, rules = ?, hub_url = ? WHERE id = ?`,
+		name, req.EventID, enabled, string(rulesJSON), hubURL, id,
 	); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update timing system"})
+	}
+	if hubURL != prevHubURL {
+		// A different hub means the stored (session, cursor) no longer applies —
+		// reset so the puller re-pulls that hub's log from 0.
+		if _, err := tx.Exec(`UPDATE timing_systems SET hub_session = '', hub_cursor = 0 WHERE id = ?`, id); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update timing system"})
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to commit"})
@@ -201,7 +219,7 @@ type incomingPunch struct {
 // currently-active instance and its target event. The dialect follows the kind.
 func (h *Handler) ReceivePunches(c *fiber.Ctx) error {
 	kind := c.Params("kind")
-	if !validTimingKind(kind) {
+	if !pushTimingKind(kind) {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "unknown timing kind"})
 	}
 	ostis := kind == "ostis"
@@ -256,13 +274,17 @@ func (h *Handler) ingestPunches(sys models.TimingSystem, punches []incomingPunch
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	receiptTS := float64(time.Now().Unix())
-	source := strings.TrimSpace(sys.Name)
-	if source == "" {
-		source = "timing"
+	defaultSource := strings.TrimSpace(sys.Name)
+	if defaultSource == "" {
+		defaultSource = "timing"
 	}
 
 	inserted := make([]models.Passing, 0, len(punches))
 	for _, p := range punches {
+		source := strings.TrimSpace(p.source)
+		if source == "" {
+			source = defaultSource
+		}
 		name := p.code
 		adj := 0
 		for _, r := range sys.Rules {
@@ -356,7 +378,8 @@ func parseOstisBatch(body []byte) []incomingPunch {
 		if code == "" {
 			code = outerLoop
 		}
-		out = append(out, incomingPunch{card: chip, code: code, ts: rawToFloatPtr(row[2]), source: "OSTIS"})
+		// No per-punch source — ingest falls back to the instance name.
+		out = append(out, incomingPunch{card: chip, code: code, ts: rawToFloatPtr(row[2])})
 	}
 	return out
 }

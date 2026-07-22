@@ -2,13 +2,14 @@ import { Box } from '@mui/material';
 import {
   SettingsInputAntenna as AntennaIcon,
   CellTower as TowerIcon,
+  Router as RouterIcon,
 } from '@mui/icons-material';
 import { timingKindDef } from './timingCatalog.ts';
 
 /** Colored logo tile for a kind (placeholder icons until real vendor logos land). */
 export function TimingLogo({ kind, size = 44 }: { kind: string; size?: number }) {
   const tint = timingKindDef(kind)?.tint ?? '#8A8A8A';
-  const Icon = kind === 'ostis' ? TowerIcon : AntennaIcon;
+  const Icon = kind === 'ostis' ? TowerIcon : kind === 'hub' ? RouterIcon : AntennaIcon;
   return (
     <Box
       sx={{

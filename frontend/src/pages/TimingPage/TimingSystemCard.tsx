@@ -21,7 +21,9 @@ export function TimingSystemCard({ system, events, onOpen }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const eventName = events.find((e) => e.id === system.eventId)?.displayName ?? '';
-  const url = timingUrl(system.kind);
+  // Hub instances are pull-based: the useful link is the hub's own address, not
+  // a receive URL on this server.
+  const url = system.kind === 'hub' ? system.hubUrl : timingUrl(system.kind);
 
   const copy = (e: MouseEvent) => {
     e.stopPropagation();
@@ -64,13 +66,20 @@ export function TimingSystemCard({ system, events, onOpen }: Props) {
           <Typography variant="body2" sx={{ color: eventName ? 'text.secondary' : 'warning.main' }}>
             {eventName ? t('timing.routesTo', { name: eventName }) : t('timing.noEventShort')}
           </Typography>
+          {system.kind === 'hub' && (
+            <Typography variant="body2" sx={{ color: url ? 'text.secondary' : 'warning.main', fontFamily: url ? 'monospace' : undefined }}>
+              {url || t('timing.hubNoUrlShort')}
+            </Typography>
+          )}
         </Stack>
       </Box>
-      <Tooltip title={copied ? t('timing.copied') : t('timing.copyLink')} arrow>
-        <IconButton onClick={copy}>
-          {copied ? <CheckIcon color="success" /> : <CopyIcon />}
-        </IconButton>
-      </Tooltip>
+      {url && (
+        <Tooltip title={copied ? t('timing.copied') : t('timing.copyLink')} arrow>
+          <IconButton onClick={copy}>
+            {copied ? <CheckIcon color="success" /> : <CopyIcon />}
+          </IconButton>
+        </Tooltip>
+      )}
     </Paper>
   );
 }

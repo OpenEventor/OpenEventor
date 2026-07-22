@@ -1,0 +1,6 @@
+config openeventor-web 'main'
+	option port  '8081'
+	option data  '/usr/share/openeventor-web'
+	# Event databases live under 'data' (overlay flash). For heavy use point it
+	# at external USB/SD storage to spare the router's flash:
+	#option data  '/mnt/sda1/openeventor-web'
