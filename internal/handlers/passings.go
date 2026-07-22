@@ -18,7 +18,7 @@ func roundCs(ts float64) float64 {
 	return math.Round(ts*100) / 100
 }
 
-// CreatePassings handles batch passing creation from timing devices (event-token auth).
+// CreatePassings handles batch passing creation from timing devices.
 func (h *Handler) CreatePassings(c *fiber.Ctx) error {
 	eventID := c.Params("eventId")
 

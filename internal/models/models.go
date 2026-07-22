@@ -1,42 +1,18 @@
 package models
 
-// User represents a system user (organizer, judge).
-type User struct {
-	ID           string `json:"id" db:"id"`
-	Login        string `json:"login" db:"login"`
-	PasswordHash string `json:"-" db:"password_hash"`
-	Name         string `json:"name" db:"name"`
-	CreatedAt    string `json:"createdAt" db:"created_at"`
-}
-
-// Event represents an event entry in system.db.
+// Event represents an event entry in system.db. There is no auth layer —
+// OpenEventor is LAN-local software for race admins, so events are open to
+// whoever can reach the server.
 type Event struct {
 	ID          string `json:"id" db:"id"`
 	Filename    string `json:"-" db:"filename"`
 	DisplayName string `json:"displayName" db:"display_name"`
 	Date        string `json:"date" db:"date"`
 	Status      string `json:"status" db:"status"`
-	Token       string `json:"token,omitempty" db:"token"`
 	CreatedAt   string `json:"createdAt" db:"created_at"`
 	// ModifiedAt is computed from the event .db file's modification time (not a
 	// stored column) — the real discriminator of recent activity.
 	ModifiedAt string `json:"modifiedAt,omitempty"`
-}
-
-// EventAccess links users to events with a role.
-type EventAccess struct {
-	EventID string `json:"eventId" db:"event_id"`
-	UserID  string `json:"userId" db:"user_id"`
-	Role    string `json:"role" db:"role"`
-}
-
-// Session stores refresh token data.
-type Session struct {
-	ID           string `json:"id" db:"id"`
-	UserID       string `json:"userId" db:"user_id"`
-	RefreshToken string `json:"-" db:"refresh_token"`
-	ExpiresAt    string `json:"expiresAt" db:"expires_at"`
-	CreatedAt    string `json:"createdAt" db:"created_at"`
 }
 
 // Competitor in an event.

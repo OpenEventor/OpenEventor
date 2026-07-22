@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../basePath.ts';
-import { getStoredToken } from '../api/client';
 
 export type SSEStatus = 'connecting' | 'online' | 'offline';
 
@@ -21,7 +20,7 @@ const HEARTBEAT_TIMEOUT_MS = 10_000;
 
 /**
  * Hook that maintains an SSE connection to the event stream.
- * Auth is passed via ?jwt= query param since EventSource doesn't support headers.
+ * The stream is open — no auth (LAN-local software).
  * Auto-reconnects with exponential backoff on disconnect.
  * Uses heartbeat timeout to detect dead connections (server pings every 15s).
  */
@@ -74,13 +73,7 @@ export function useEventSSE({ eventId, onMessage, onReconnect, enabled = true }:
       if (disposed) return;
 
       setStatus('connecting');
-      const token = getStoredToken();
-      if (!token) {
-        setStatus('offline');
-        return;
-      }
-
-      const url = apiUrl(`/api/events/${eventId}/stream?jwt=${encodeURIComponent(token)}`);
+      const url = apiUrl(`/api/events/${eventId}/stream`);
       es = new EventSource(url);
 
       es.onopen = () => {

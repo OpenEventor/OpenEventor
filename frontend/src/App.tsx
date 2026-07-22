@@ -1,10 +1,8 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { BASE_PATH } from './basePath.ts';
 import { ThemeModeProvider } from './contexts/ThemeContext.tsx';
-import { AuthProvider } from './contexts/AuthContext.tsx';
-import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute.tsx';
+import { RootLayout } from './components/RootLayout/RootLayout.tsx';
 import { EventLayout } from './components/EventLayout/EventLayout.tsx';
-import { LoginPage } from './pages/LoginPage/LoginPage.tsx';
 import { EventsListPage } from './pages/EventsListPage/EventsListPage.tsx';
 import { TimingPage } from './pages/TimingPage/TimingPage.tsx';
 import { CompetitorsPage } from './pages/event/CompetitorsPage/CompetitorsPage.tsx';
@@ -21,12 +19,8 @@ import { ModulesPage } from './pages/event/ModulesPage/ModulesPage.tsx';
 
 const router = createBrowserRouter([
   {
-    path: '/login',
-    element: <LoginPage />,
-  },
-  {
     path: '/',
-    element: <ProtectedRoute />,
+    element: <RootLayout />,
     children: [
       { index: true, element: <Navigate to="/events" replace /> },
       { path: 'events', element: <EventsListPage /> },
@@ -58,9 +52,7 @@ const router = createBrowserRouter([
 function App() {
   return (
     <ThemeModeProvider>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <RouterProvider router={router} />
     </ThemeModeProvider>
   );
 }

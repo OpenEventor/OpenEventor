@@ -1,17 +1,12 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
-import { useAuth } from '../../contexts/AuthContext.tsx';
 import { AppBar } from '../AppBar/AppBar.tsx';
 
-export function ProtectedRoute() {
-  const { isAuthenticated } = useAuth();
+// Root layout: AppBar + content for top-level pages (events list, timing).
+// Event pages render bare — EventLayout brings its own AppBar + sidebar.
+export function RootLayout() {
   const location = useLocation();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  // Check if we're on an event page — EventLayout handles its own AppBar + layout
   const isEventPage = /^\/events\/[^/]+/.test(location.pathname);
   if (isEventPage) {
     return <Outlet />;

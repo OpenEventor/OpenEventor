@@ -15,14 +15,8 @@ import (
 // ImportEvent accepts an uploaded OpenEventor event .db (multipart field "file"),
 // validates it, stores it under a NEW event id (so it never collides with an
 // existing event), migrates it up to the current schema, and registers it in
-// system.db with admin access for the current user. Interchangeable with the iOS
-// app's exported files.
+// system.db. Interchangeable with the iOS app's exported files.
 func (h *Handler) ImportEvent(c *fiber.Ctx) error {
-	userID, _ := c.Locals("userId").(string)
-	if !userExists(h.DB.SystemDB(), userID) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "your session is no longer valid — please log in again"})
-	}
-
 	fh, err := c.FormFile("file")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file is required (multipart field 'file')"})
@@ -56,53 +50,24 @@ func (h *Handler) ImportEvent(c *fiber.Ctx) error {
 	if displayName == "" {
 		displayName = fh.Filename
 	}
-	// Always mint a FRESH token: the imported copy is a distinct event, and reusing
-	// the source's token would collide with the source's system.db registration
-	// (events.token is UNIQUE).
-	token, err := generateEventToken()
-	if err != nil {
-		h.DB.CloseEventDB(newID)
-		_ = os.Remove(dstPath)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate event token"})
-	}
-	// Persist the new token + id under the canonical keys.
-	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('token', ?)", token)
+	// Persist the new id under the canonical key (the imported copy is a
+	// distinct event).
 	_, _ = eventDB.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('id', ?)", newID)
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	sysDB := h.DB.SystemDB()
 	if _, err := sysDB.Exec(
-		"INSERT INTO events (id, filename, display_name, date, status, token, created_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
-		newID, filename, displayName, date, token, now,
+		"INSERT INTO events (id, filename, display_name, date, status, created_at) VALUES (?, ?, ?, ?, 'active', ?)",
+		newID, filename, displayName, date, now,
 	); err != nil {
 		h.DB.CloseEventDB(newID)
 		_ = os.Remove(dstPath)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to register imported event"})
 	}
-	if _, err := sysDB.Exec(
-		"INSERT INTO event_access (event_id, user_id, role) VALUES (?, ?, 'admin')",
-		newID, userID,
-	); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to set event access"})
-	}
 
 	return c.Status(fiber.StatusCreated).JSON(models.Event{
-		ID: newID, DisplayName: displayName, Date: date, Status: "active", Token: token, CreatedAt: now,
+		ID: newID, DisplayName: displayName, Date: date, Status: "active", CreatedAt: now,
 	})
-}
-
-// userExists reports whether a user id is present in system.db. Guards against a
-// valid-signature JWT whose user no longer exists (e.g. after a data reset),
-// which would otherwise FK-fail the event_access insert with a cryptic 500.
-func userExists(db *sql.DB, id string) bool {
-	if id == "" {
-		return false
-	}
-	var n int
-	if err := db.QueryRow("SELECT COUNT(1) FROM users WHERE id = ?", id).Scan(&n); err != nil {
-		return false
-	}
-	return n > 0
 }
 
 // validateOpenEventorDB confirms path is a SQLite file that looks like an

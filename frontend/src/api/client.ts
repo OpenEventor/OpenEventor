@@ -1,6 +1,3 @@
-const TOKEN_KEY = 'openeventor_token';
-const REFRESH_TOKEN_KEY = 'openeventor_refresh_token';
-
 import { apiUrl } from '../basePath.ts';
 
 export class ApiError extends Error {
@@ -13,59 +10,15 @@ export class ApiError extends Error {
   }
 }
 
-// Refresh lock: prevent multiple concurrent refresh attempts.
-let refreshPromise: Promise<string | null> | null = null;
-
-async function tryRefresh(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) return null;
-
-  try {
-    const response = await fetch(apiUrl('/api/auth/refresh'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (data.token) {
-      localStorage.setItem(TOKEN_KEY, data.token);
-      return data.token as string;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  if (!refreshPromise) {
-    refreshPromise = tryRefresh().finally(() => { refreshPromise = null; });
-  }
-  return refreshPromise;
-}
-
+// No authentication: OpenEventor is LAN-local software for race admins — the
+// network boundary is the access boundary.
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem(TOKEN_KEY);
   const headers = new Headers(options.headers);
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
   if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
-  let response = await fetch(apiUrl(path), { ...options, headers });
-
-  // Auto-refresh on 401 (skip auth endpoints to avoid loops).
-  if (response.status === 401 && !path.startsWith('/api/auth/')) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`);
-      response = await fetch(apiUrl(path), { ...options, headers });
-    }
-  }
+  const response = await fetch(apiUrl(path), { ...options, headers });
 
   if (!response.ok) {
     let message = response.statusText;
@@ -106,20 +59,3 @@ export const api = {
   upload: <T>(path: string, formData: FormData): Promise<T> =>
     request<T>(path, { method: 'POST', body: formData }),
 };
-
-export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setStoredToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearStoredToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-export function setStoredRefreshToken(token: string): void {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-}

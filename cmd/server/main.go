@@ -65,10 +65,6 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := database.EnsureDefaultUser(db.SystemDB()); err != nil {
-		log.Fatalf("seed default user: %v", err)
-	}
-
 	// On a fresh install (no events yet), seed the demo event so the app opens
 	// with something to explore. Disable with SEED_DEMO=false.
 	if seed := os.Getenv("SEED_DEMO"); seed != "false" && seed != "0" {
@@ -93,7 +89,7 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-Event-Token",
+		AllowHeaders: "Origin, Content-Type, Accept",
 		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 	}))
 
@@ -102,7 +98,14 @@ func main() {
 		Config: cfg,
 		SSE:    broker,
 	}
+	h.HubPuller = handlers.NewHubPuller(h)
 	handlers.SetupRoutes(app, h)
+
+	// Background puller for the hub timing kind (pull-based, unlike the push
+	// receivers on /api/timing/*). Stopped via ctx on shutdown.
+	pullerCtx, stopPuller := context.WithCancel(context.Background())
+	defer stopPuller()
+	go h.HubPuller.Run(pullerCtx)
 
 	// Any /api/* not matched above is a genuine 404 (JSON), never the SPA shell.
 	app.Use("/api", func(c *fiber.Ctx) error {

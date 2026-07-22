@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/openeventor/openeventor/internal/auth"
 	"github.com/openeventor/openeventor/internal/config"
 	"github.com/openeventor/openeventor/internal/database"
 	"github.com/openeventor/openeventor/internal/sse"
@@ -10,9 +9,10 @@ import (
 
 // Handler holds shared dependencies for all route handlers.
 type Handler struct {
-	DB     *database.Manager
-	Config *config.Config
-	SSE    *sse.Broker
+	DB        *database.Manager
+	Config    *config.Config
+	SSE       *sse.Broker
+	HubPuller *HubPuller // background puller for the hub timing kind (may be nil in tests)
 }
 
 // SetupRoutes registers all API routes on the Fiber app.
@@ -21,40 +21,26 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	// Auth (public)
-	authGroup := app.Group("/api/auth")
-	authGroup.Post("/login", h.Login)
-	authGroup.Post("/refresh", h.RefreshToken)
-	authGroup.Post("/logout", h.Logout)
+	// No authentication anywhere: OpenEventor is LAN-local timing software for
+	// race admins — whoever can reach the server is trusted. The network
+	// boundary (the event LAN / router) is the access boundary.
 
-	// SSE stream (standalone — registered before JWT middleware so it's matched first)
+	// SSE stream for real-time consumers (monitor UI, scoreboards, overlays).
 	app.Get("/api/events/:eventId/stream", h.Stream)
 
-	// Event-token validator: checks token against system.db.
-	validateToken := auth.TokenValidator(func(eventID, token string) bool {
-		var stored string
-		err := h.DB.SystemDB().QueryRow(
-			"SELECT token FROM events WHERE id = ? AND status = 'active'", eventID,
-		).Scan(&stored)
-		return err == nil && stored != "" && stored == token
-	})
-
-	// Event-token routes (individual routes, not groups, to avoid catching other methods)
-	eventTokenMw := auth.RequireEventToken(validateToken)
-	app.Post("/api/events/:eventId/passings", eventTokenMw, h.CreatePassings)
-	app.Get("/api/events/:eventId/results", eventTokenMw, h.GetResults)
+	// External producers/consumers (timing devices, online results).
+	app.Post("/api/events/:eventId/passings", h.CreatePassings)
+	app.Get("/api/events/:eventId/results", h.GetResults)
 
 	// Timing-system punch receiver — fixed URL per kind (/api/timing/ostis,
-	// /api/timing/universal), no token; punches route to that kind's active
-	// instance + its event. Registered before the JWT group so it isn't caught by
-	// it. The wildcard variant accepts a trailing path (e.g. OSTIS …/addSplit).
+	// /api/timing/universal); punches route to that kind's active instance +
+	// its event. The wildcard variant accepts a trailing path (e.g. OSTIS …/addSplit).
 	app.Post("/api/timing/:kind", h.ReceivePunches)
 	app.Get("/api/timing/:kind", h.ReceivePunches)
 	app.Post("/api/timing/:kind/*", h.ReceivePunches)
 	app.Get("/api/timing/:kind/*", h.ReceivePunches)
 
-	// Protected routes
-	api := app.Group("/api", auth.RequireJWT(h.Config.JWTSecret))
+	api := app.Group("/api")
 
 	// Events
 	api.Get("/events", h.ListEvents)
@@ -67,6 +53,7 @@ func SetupRoutes(app *fiber.App, h *Handler) {
 	api.Post("/timing-systems", h.CreateTimingSystem)
 	api.Put("/timing-systems/:id", h.UpdateTimingSystem)
 	api.Delete("/timing-systems/:id", h.DeleteTimingSystem)
+	api.Get("/timing-systems/:id/hub-status", h.HubStatus)
 
 	// Event-scoped routes
 	event := api.Group("/events/:eventId")

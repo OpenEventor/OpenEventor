@@ -4,10 +4,10 @@
 // (default http://localhost:5050/api/timing/ostis) so you can watch them flow
 // into the split monitor live.
 //
-// By default it discovers what to send from the server: it logs in, finds the
+// By default it discovers what to send from the server: it finds the
 // currently-active OSTIS system's target event, and uses that event's
 // competitor chips (card1/card2) and checkpoint names. Override any of that with
-// flags. To skip login entirely, pass -chips and -loops.
+// flags (the API is open — no auth).
 //
 //	go run ./cmd/ostis-sim                       # auto-discover, stream forever-ish
 //	go run ./cmd/ostis-sim -interval 300ms -max 8
@@ -31,10 +31,8 @@ func main() {
 	var (
 		url      = flag.String("url", "http://localhost:5050/api/timing/ostis", "OSTIS receive endpoint")
 		apiBase  = flag.String("api", "http://localhost:5050", "API base (to auto-discover chips & checkpoints)")
-		login    = flag.String("login", "admin", "login for discovery")
-		password = flag.String("password", "admin", "password for discovery")
 		event    = flag.String("event", "", "event id (default: the active OSTIS system's event)")
-		chipsCSV = flag.String("chips", "", "comma-separated chips (skips discovery/auth when set)")
+		chipsCSV = flag.String("chips", "", "comma-separated chips (skips discovery when set)")
 		loopsCSV = flag.String("loops", "TY5TEVFA,TD6WRF4Q", "comma-separated OSTIS station/loop codes, in order")
 		interval = flag.Duration("interval", 700*time.Millisecond, "delay between punches")
 		maxChips = flag.Int("max", 0, "use at most N chips (0 = all)")
@@ -48,18 +46,15 @@ func main() {
 
 	// Discover competitor chips from the active OSTIS event unless -chips was given.
 	if len(chips) == 0 {
-		token, err := doLogin(*apiBase, *login, *password)
-		if err != nil {
-			log.Fatalf("login failed: %v (or pass -chips to skip discovery)", err)
-		}
 		evID := *event
+		var err error
 		if evID == "" {
-			evID, err = activeOstisEvent(*apiBase, token)
+			evID, err = activeOstisEvent(*apiBase)
 			if err != nil {
 				log.Fatalf("%v", err)
 			}
 		}
-		chips, err = eventCards(*apiBase, token, evID)
+		chips, err = eventCards(*apiBase, evID)
 		if err != nil || len(chips) == 0 {
 			log.Fatalf("no competitor chips in event %s (%v); pass -chips", evID, err)
 		}
@@ -117,34 +112,10 @@ func post(client *http.Client, url string, body []byte) (string, string) {
 	return resp.Status, string(b)
 }
 
-// ── discovery helpers (JWT) ─────────────────────────────────────────────────
+// ── discovery helpers (open API, no auth) ───────────────────────────────────
 
-func doLogin(apiBase, login, password string) (string, error) {
-	body, _ := json.Marshal(map[string]string{"login": login, "password": password})
-	resp, err := http.Post(apiBase+"/api/auth/login", "application/json", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("login HTTP %d", resp.StatusCode)
-	}
-	var out struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
-	}
-	if out.Token == "" {
-		return "", fmt.Errorf("no token in login response")
-	}
-	return out.Token, nil
-}
-
-func getJSON(apiBase, token, path string, dst interface{}) error {
-	req, _ := http.NewRequest("GET", apiBase+path, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := http.DefaultClient.Do(req)
+func getJSON(apiBase, path string, dst interface{}) error {
+	resp, err := http.Get(apiBase + path)
 	if err != nil {
 		return err
 	}
@@ -155,14 +126,14 @@ func getJSON(apiBase, token, path string, dst interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(dst)
 }
 
-func activeOstisEvent(apiBase, token string) (string, error) {
+func activeOstisEvent(apiBase string) (string, error) {
 	var systems []struct {
 		Kind    string `json:"kind"`
 		Enabled int    `json:"enabled"`
 		EventID string `json:"eventId"`
 		Name    string `json:"name"`
 	}
-	if err := getJSON(apiBase, token, "/api/timing-systems", &systems); err != nil {
+	if err := getJSON(apiBase, "/api/timing-systems", &systems); err != nil {
 		return "", err
 	}
 	for _, s := range systems {
@@ -176,12 +147,12 @@ func activeOstisEvent(apiBase, token string) (string, error) {
 	return "", fmt.Errorf("no active OSTIS system — add one and toggle it active in /timing")
 }
 
-func eventCards(apiBase, token, eventID string) ([]string, error) {
+func eventCards(apiBase, eventID string) ([]string, error) {
 	var comps []struct {
 		Card1 string `json:"card1"`
 		Card2 string `json:"card2"`
 	}
-	if err := getJSON(apiBase, token, "/api/events/"+eventID+"/competitors", &comps); err != nil {
+	if err := getJSON(apiBase, "/api/events/"+eventID+"/competitors", &comps); err != nil {
 		return nil, err
 	}
 	seen := map[string]bool{}

@@ -26,17 +26,9 @@ Both modes use the identical codebase and database schema.
 
 ### system.db (SQLite)
 
-One per installation. Stores authentication and event registry.
+One per installation. Stores the event registry (plus timing-system instances).
 
 ```sql
-CREATE TABLE users (
-    id TEXT PRIMARY KEY,          -- UUID
-    login TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,   -- bcrypt
-    name TEXT NOT NULL,
-    created_at TEXT NOT NULL       -- ISO 8601 UTC
-);
-
 CREATE TABLE events (
     id TEXT PRIMARY KEY,           -- UUID
     filename TEXT UNIQUE NOT NULL, -- path to event .db file
@@ -45,27 +37,11 @@ CREATE TABLE events (
     status TEXT DEFAULT 'active',  -- active | archived
     created_at TEXT NOT NULL
 );
-
-CREATE TABLE event_access (
-    event_id TEXT NOT NULL REFERENCES events(id),
-    user_id TEXT NOT NULL REFERENCES users(id),
-    role TEXT NOT NULL,            -- admin | operator | viewer
-    PRIMARY KEY (event_id, user_id)
-);
-
-CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    refresh_token TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
 ```
 
 Notes:
 - `display_name` and `date` in the events table are duplicated from event DB settings for fast listing. Updated when event settings change.
-- First user created on initial setup becomes admin.
-- Event creator automatically gets admin role in event_access.
+- There are no user or access tables — see "No authentication" below.
 
 ### event_<uuid>.db (SQLite)
 
@@ -243,7 +219,7 @@ This supports different sport conventions:
 
 ```
 External device → POST /api/events/:id/passings → passings table
-                  (batch, event-token auth)
+                  (batch, no auth — LAN trust)
 
 Passings arrive as:
 {
@@ -258,7 +234,7 @@ Key behaviors:
 - Passings are accepted regardless of whether the checkpoint is defined in any course
 - `card` matching is plain text comparison, no FK constraints
 - Batch writes (array of passings) for offline-first readers
-- Event-token authentication (separate from user JWT) so timing devices don't need user credentials
+- No credentials needed — timing devices just POST to the event's URL
 
 ## Result Computation
 
@@ -294,29 +270,23 @@ Courses store an ordered JSON array of checkpoint names:
 
 The validation algorithm is a separate, extensible module. Different sports need different logic. Detailed course validation specification will be documented in `docs/courses.md`.
 
-## Authentication & Authorization
+## No authentication
 
-### Auth flow:
-1. `POST /api/auth/login` → returns JWT access token + refresh token
-2. Access token: short TTL (~15 min), used for API calls
-3. Refresh token: stored in sessions table, longer TTL
-4. Fiber middleware validates JWT and checks event_access for event-scoped endpoints
+OpenEventor has **no auth layer at all** — no users, no logins, no tokens.
+It is timing software for race admins, deployed on the event LAN (a laptop in
+the timing tent, or inside the event's OpenWRT router): whoever can reach the
+server *is* the race staff. The network boundary is the access boundary.
 
-### Token types:
-- **User JWT** — for human users (organizers, judges). Carries user_id and role.
-- **Event token** — for timing devices and data consumers. Scoped to single event. Stored in event settings. No user identity needed.
-
-### Roles:
-- **admin** — full access to event (manage competitors, courses, access, settings)
-- **operator** — can input/edit data (competitors, passings) but not manage access
-- **viewer** — read-only access (results, live stream)
+If an installation must ever be exposed beyond the trusted LAN, put a reverse
+proxy with its own access control in front — the application itself stays
+auth-free by design.
 
 ## Real-time Data Distribution
 
 ### SSE (Server-Sent Events)
 
 ```
-GET /api/events/:id/stream?token=<event-token>
+GET /api/events/:id/stream
 
 data: {"type":"passing","card":"12345","checkpoint":"FINISH","timestamp":"..."}
 data: {"type":"result","bib":"42","name":"Ivanov","place":1,"time":"1:02:33"}
@@ -359,7 +329,6 @@ openeventor/
 │   └── server/
 │       └── main.go              # Entry point
 ├── internal/
-│   ├── auth/                    # JWT, bcrypt, middleware
 │   ├── handlers/                # Fiber route handlers
 │   ├── models/                  # Domain types
 │   ├── database/                # SQLite connection management, migrations

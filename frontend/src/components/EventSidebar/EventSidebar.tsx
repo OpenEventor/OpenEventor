@@ -31,14 +31,11 @@ import {
   Download as DownloadIcon,
   ArrowBack as ArrowBackIcon,
   Palette as PaletteIcon,
-  Logout as LogoutIcon,
   Tune as TuneIcon,
   SettingsInputAntenna as TimingIcon,
   Translate as LanguageIcon,
 } from "@mui/icons-material";
-import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useEvent } from "../../contexts/EventContext.tsx";
-import { getStoredToken } from "../../api/client.ts";
 import { PrivacyScreen } from "../PrivacyScreen/PrivacyScreen.tsx";
 import DropDownMenu from "../DropDownMenu/DropDownMenu.tsx";
 import type { DropDownMenuConfig } from "../DropDownMenu/types.ts";
@@ -46,7 +43,6 @@ import {
   ThemeModeRadioGroup,
   LanguageRadioGroup,
   HighContrastSwitch,
-  CompactViewSwitch,
 } from "../AppBar/AppBar.tsx";
 import logoSvg from "../../assets/logo.svg";
 
@@ -73,7 +69,6 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const { eventId, displayName, date } = useEvent();
 
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -96,10 +91,7 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
   const handleExport = useCallback(async () => {
     onClose();
     try {
-      const token = getStoredToken();
-      const response = await fetch(apiUrl(`/api/events/${eventId}/export`), {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const response = await fetch(apiUrl(`/api/events/${eventId}/export`));
       if (!response.ok) throw new Error("Failed to export event");
 
       let filename = `event_${eventId}.db`;
@@ -170,7 +162,6 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
             items: [
               { Component: <ThemeModeRadioGroup /> },
               { Component: <HighContrastSwitch /> },
-              { Component: <CompactViewSwitch /> },
             ],
           },
         },
@@ -182,11 +173,6 @@ export function EventSidebar({ mobileOpen, onClose }: EventSidebarProps) {
             title: t("nav.language"),
             items: [{ Component: <LanguageRadioGroup /> }],
           },
-        },
-        {
-          icon: <LogoutIcon />,
-          text: t("nav.logout"),
-          action: () => logout(),
         },
       ],
     }),

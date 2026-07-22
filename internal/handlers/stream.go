@@ -7,23 +7,12 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/openeventor/openeventor/internal/auth"
 	"github.com/valyala/fasthttp"
 )
 
-// Stream handles SSE connections for real-time event updates.
-// Auth: JWT via ?jwt= query param (for monitor UI).
+// Stream handles SSE connections for real-time event updates. Open like the
+// rest of the API — the LAN is the trust boundary.
 func (h *Handler) Stream(c *fiber.Ctx) error {
-	// Authenticate via JWT query param.
-	jwtToken := c.Query("jwt")
-	if jwtToken == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing jwt query param"})
-	}
-	_, err := auth.ValidateAccessToken(jwtToken, h.Config.JWTSecret)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token"})
-	}
-
 	eventID := c.Params("eventId")
 
 	// Verify event DB exists.

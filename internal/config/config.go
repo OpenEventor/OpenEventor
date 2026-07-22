@@ -2,24 +2,17 @@ package config
 
 import (
 	"os"
-	"time"
 )
 
 type Config struct {
-	Port            string
-	DataDir         string
-	JWTSecret       string
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
+	Port    string
+	DataDir string
 }
 
 func Load() *Config {
 	return &Config{
-		Port:            envOrDefault("PORT", "5050"),
-		DataDir:         envOrDefault("DATA_DIR", "./data"),
-		JWTSecret:       envOrDefault("JWT_SECRET", "change-me-in-production"),
-		AccessTokenTTL:  15 * time.Minute,
-		RefreshTokenTTL: 7 * 24 * time.Hour,
+		Port:    envOrDefault("PORT", "5050"),
+		DataDir: envOrDefault("DATA_DIR", "./data"),
 	}
 }
 

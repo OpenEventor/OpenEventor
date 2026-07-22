@@ -35,7 +35,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { type Dayjs } from 'dayjs';
 import Field from '../../../components/Field/Field.tsx';
 import LogoCropDialog from './LogoCropDialog.tsx';
-import { api, getStoredToken } from '../../../api/client.ts';
+import { api } from '../../../api/client.ts';
 import type { EventFile } from '../../../api/types.ts';
 import { useEvent } from '../../../contexts/EventContext.tsx';
 
@@ -126,10 +126,7 @@ export function SettingsPage() {
         return;
       }
       setLogoFileId(first.id);
-      const token = getStoredToken();
-      const resp = await fetch(apiUrl(`/api/events/${eventId}/files/${first.id}`), {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const resp = await fetch(apiUrl(`/api/events/${eventId}/files/${first.id}`));
       if (!resp.ok) throw new Error(t('settings.logoError'));
       const blob = await resp.blob();
       setLogoUrl(URL.createObjectURL(blob));
