@@ -122,8 +122,33 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  # OpenWRT router packages — pure-Go SQLite (-tags purego), so no cross
+  # C toolchains: one job builds all router arches. See packaging/openwrt/.
+  openwrt:
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Restore frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - name: Build .ipk packages
+        run: VERSION="${GITHUB_REF_NAME#v}" ./packaging/openwrt/build-ipk.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openeventor-openwrt-ipk
+          path: dist/openwrt/*.ipk
+          retention-days: 1
+          if-no-files-found: error
+
   release:
-    needs: build
+    needs: [build, openwrt]
     runs-on: ubuntu-latest
     permissions:
       contents: write
