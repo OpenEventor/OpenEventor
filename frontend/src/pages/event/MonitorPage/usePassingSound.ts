@@ -19,6 +19,18 @@ export function usePassingSound() {
     const ctx = new AudioContext();
     ctxRef.current = ctx;
 
+    // Chrome autoplay policy: the context starts suspended until the page has
+    // had a user gesture. Resume right away (covers navigating here by
+    // clicking through the app — activation is sticky) and again on the first
+    // gesture (covers direct loads / hard refreshes straight onto the
+    // monitor, where punches would otherwise stay silent until some click).
+    const unlock = () => {
+      void ctx.resume();
+    };
+    unlock();
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+
     fetch(addSoundUrl)
       .then((res) => res.arrayBuffer())
       .then((arr) => ctx.decodeAudioData(arr))
@@ -30,6 +42,8 @@ export function usePassingSound() {
       });
 
     return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
       void ctx.close();
     };
   }, []);
@@ -45,9 +59,13 @@ export function usePassingSound() {
     if (now - lastPlayRef.current < MIN_INTERVAL_MS) return;
     lastPlayRef.current = now;
 
-    // Resume context if suspended (browser autoplay policy).
+    // Still suspended = the page has had no user gesture yet — the browser
+    // will not let audio through. Don't queue a source on the sleeping
+    // context (it would fire as a stale burst once resumed); just try to
+    // resume for the next punch.
     if (ctx.state === 'suspended') {
       void ctx.resume();
+      return;
     }
 
     const source = ctx.createBufferSource();
