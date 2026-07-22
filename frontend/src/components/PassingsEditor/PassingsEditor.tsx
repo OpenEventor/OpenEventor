@@ -33,6 +33,7 @@ import { api } from "../../api/client";
 import DropDownMenu from "../DropDownMenu/DropDownMenu";
 import DropDownMenuSwitcher from "../DropDownMenu/DropDownMenuSwitcher";
 import { useEvent } from "../../contexts/EventContext";
+import { randomUUID } from "../../utils/uuid";
 import type { DropDownMenuConfig } from "../DropDownMenu/types";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ function buildWorkingList(passings: Passing[]): WorkingPassing[] {
 /** Create an empty new passing. */
 function createNewPassing(): WorkingPassing {
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     checkpoint: "",
     timestamp: 0,
     enabled: 1,
