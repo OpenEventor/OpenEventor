@@ -187,6 +187,13 @@ export function MonitorPage() {
     return () => { if (troublesTimer.current) clearTimeout(troublesTimer.current); };
   }, [loading, error, refreshTroubles]);
 
+  // Fresh monitor mount: nothing can legitimately hold the render lock yet, so
+  // drop any lock leaked by a previous visit (a leaked lock silently freezes
+  // all live updates until a full page reload).
+  useEffect(() => {
+    renderLock.reset();
+  }, []);
+
   // Override renderLock.onUnlock to use anchored bump (store sets bare bump by default).
   useEffect(() => {
     renderLock.onUnlock = anchoredBump;

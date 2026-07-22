@@ -4,7 +4,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { Passing } from '../../../api/types';
 import type { CompetitorGroup } from './useMonitorStore';
-import { renderLock, pauseRefresh } from './useMonitorStore';
+import { pauseRefresh, useRenderLockGuard } from './useMonitorStore';
 import { useMonitorContext } from './MonitorContext';
 import CompetitorHeader from './CompetitorHeader';
 import { computeDeltas } from '../../../components/PassingBlock/PassingBlock';
@@ -25,6 +25,7 @@ interface CompetitorRowProps {
 
 export default function CompetitorRow({ group, allPassings, height }: CompetitorRowProps) {
   const { eventId, groups: groupsMap, courses: coursesMap } = useMonitorContext();
+  const renderLock = useRenderLockGuard();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
   const [dialogState, setDialogState] = useState<{

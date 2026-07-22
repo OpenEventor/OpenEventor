@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material';
 import type { Passing } from '../../../api/types';
-import { freshPassingIds, renderLock, pauseRefresh } from './useMonitorStore';
+import { freshPassingIds, pauseRefresh, useRenderLockGuard } from './useMonitorStore';
 import { useMonitorContext } from './MonitorContext';
 import InteractivePassingBlock from '../../../components/PassingBlock/InteractivePassingBlock';
 import { lerpColor } from '../../../components/PassingBlock/PassingBlock';
@@ -21,6 +21,7 @@ interface MonitorPassingBlockProps {
 export default function PassingBlock({ passing, delta, onMenuAction }: MonitorPassingBlockProps) {
   const { eventId } = useMonitorContext();
   const theme = useTheme();
+  const renderLock = useRenderLockGuard();
   const enabled = passing.enabled === 1;
 
   // Highlight animation: consume fresh flag on mount.

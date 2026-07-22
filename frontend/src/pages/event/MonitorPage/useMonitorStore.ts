@@ -78,10 +78,45 @@ export const renderLock = {
       this.onUnlock();
     }
   },
+  /** Drop any leaked locks (fresh monitor mount — nothing can be editing yet). */
+  reset() {
+    this.count = 0;
+  },
   get locked() {
     return this.count > 0;
   },
 };
+
+/**
+ * Leak-proof renderLock handle for components that lock while an editor/menu
+ * is open. A component that unmounts without unlocking (dialog open during a
+ * route change, row removed by an SSE update, …) would otherwise freeze the
+ * monitor forever — bump() never fires again until a full page reload. The
+ * guard tracks locks held by THIS component and releases them on unmount.
+ */
+export function useRenderLockGuard() {
+  const held = useRef(0);
+  useEffect(
+    () => () => {
+      while (held.current > 0) {
+        held.current--;
+        renderLock.unlock();
+      }
+    },
+    [],
+  );
+  const lock = useCallback(() => {
+    held.current++;
+    renderLock.lock();
+  }, []);
+  const unlock = useCallback(() => {
+    if (held.current > 0) {
+      held.current--;
+      renderLock.unlock();
+    }
+  }, []);
+  return { lock, unlock };
+}
 
 // ── Pause refresh (module-level, triggers re-render after manual edits while paused) ──
 
